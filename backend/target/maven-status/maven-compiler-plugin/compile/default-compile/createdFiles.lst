@@ -1,5 +1,10 @@
 dev\gymmetry\domain\PremiumPlan.class
 dev\gymmetry\domain\VipPlan.class
+dev\gymmetry\domain\Person.class
+dev\gymmetry\domain\MembershipPlan.class
+dev\gymmetry\enums\Role.class
+dev\gymmetry\domain\Member.class
 dev\gymmetry\domain\BasicPlan.class
 dev\gymmetry\GymmetryApplication.class
-dev\gymmetry\domain\MembershipPlan.class
+dev\gymmetry\domain\Trainer.class
+dev\gymmetry\domain\Admin.class
