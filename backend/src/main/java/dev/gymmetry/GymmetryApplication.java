@@ -1,85 +1,89 @@
 package dev.gymmetry;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 import dev.gymmetry.domain.Admin;
-import dev.gymmetry.domain.AttendanceRecord;
 import dev.gymmetry.domain.BasicPlan;
 import dev.gymmetry.domain.Member;
-import dev.gymmetry.domain.Payment;
 import dev.gymmetry.domain.PremiumPlan;
 import dev.gymmetry.domain.Session;
 import dev.gymmetry.domain.Trainer;
 import dev.gymmetry.enums.PaymentMethod;
+import dev.gymmetry.service.AuthService;
+import dev.gymmetry.service.Gym;
 
 public class GymmetryApplication {
 
     public static void main(String[] args) {
 
-        Admin admin = new Admin(1, "Root Admin", "admin@gymmetry.dev");
-        Trainer trainer = new Trainer(2, "Coach Marco", "marco@gymmetry.dev");
-        trainer.addSpecialty("Strength");
-        trainer.addSpecialty("Conditioning");
+        AuthService auth = new AuthService();
+        Gym gym = new Gym(auth);
 
-        Member alice = new Member(3, "Alice", "alice@example.com", new PremiumPlan());
-        Member bob = new Member(4, "Bob", "bob@example.com", new BasicPlan());
+        // --- Seed admin (hardcoded for now, will be seeded properly in Phase 4) ---
+        Admin admin = new Admin(0, "Root Admin", "admin@gymmetry.dev");
+        auth.createUser("admin", "admin123", admin);
 
-        // --- Membership activation ---
-        System.out.println("=== MEMBERSHIP ACTIVATION ===");
-        alice.activate(LocalDate.now());
-        System.out.printf("Alice: %s, expires %s (%d days left)%n",
-                alice.getMembershipStatus(), alice.getExpiryDate(), alice.daysRemaining());
+        // --- Admin registers a trainer ---
+        Trainer marco = gym.registerTrainer(
+                "Coach Marco", "marco@gymmetry.dev", "marco", "marco123");
+        marco.addSpecialty("Strength");
 
-        // Bob does not pay yet
-        System.out.printf("Bob:   %s (no payment yet)%n%n", bob.getMembershipStatus());
+        // --- Admin registers members ---
+        Member alice = gym.registerMember(
+                "Alice", "alice@example.com", new PremiumPlan(), "alice", "alice123");
+        Member bob = gym.registerMember(
+                "Bob", "bob@example.com", new BasicPlan(), "bob", "bob123");
 
-        // --- Payments ---
-        System.out.println("=== PAYMENTS ===");
-        Payment p1 = new Payment(1, alice, alice.getPlan(), 3150.0,
-                PaymentMethod.CARD, admin);
-        System.out.println(p1);
-        System.out.println();
+        System.out.println("=== REGISTERED ===");
+        System.out.printf("Alice status: %s%n", alice.getMembershipStatus());
+        System.out.printf("Bob status:   %s%n%n", bob.getMembershipStatus());
 
-        // --- Session lifecycle ---
-        System.out.println("=== SESSION LIFECYCLE ===");
-        Session s1 = new Session(1, alice, trainer,
-                LocalDateTime.now().plusDays(3).withHour(9).withMinute(0));
-        System.out.println("Created: " + s1);
+        // --- Admin records Alice's payment ---
+        gym.recordPayment(alice.getId(), alice.getPlan(),
+                alice.getPlan().getTotalPrice(), PaymentMethod.CARD, admin);
 
-        s1.accept();
-        System.out.println("Accepted: " + s1.getStatus());
+        System.out.println("=== AFTER PAYMENT ===");
+        System.out.printf("Alice: %s, expires %s (%d days left)%n%n",
+                alice.getMembershipStatus(), alice.getExpiryDate(),
+                alice.daysRemaining());
 
-        s1.markMemberPresent();
+        // --- Alice books a session ---
+        LocalDateTime slot = LocalDateTime.now().plusDays(5).withHour(9).withMinute(0);
+        Session s1 = gym.requestSession(alice.getId(), marco.getId(), slot);
+        System.out.println("=== BOOKING ===");
+        System.out.println("Alice booked: " + s1.getStatus());
+
+        // --- Trainer accepts ---
+        gym.trainerAccept(s1.getId(), marco);
+        System.out.println("Trainer accepted: " + s1.getStatus());
+
+        // --- Trainer marks present ---
+        gym.trainerMarkPresent(s1.getId(), marco);
         System.out.println("Marked present: " + s1.getStatus()
                 + " / trainer " + s1.getTrainerStatus());
         System.out.println();
 
-        // --- Different outcome: no-show ---
-        Session s2 = new Session(2, alice, trainer,
-                LocalDateTime.now().plusDays(5).withHour(10).withMinute(0));
-        s2.accept();
-        s2.markMemberNoShow();
-        System.out.println("Second session no-show:");
-        System.out.println("  status = " + s2.getStatus()
-                + " (reason " + s2.getNotHeldReason() + ")");
-        System.out.println("  trainer = " + s2.getTrainerStatus());
+        // --- Bob tries to book without paying ---
+        System.out.println("=== BOB TRIES TO BOOK ===");
+        try {
+            gym.requestSession(bob.getId(), marco.getId(),
+                    LocalDateTime.now().plusDays(6).withHour(10).withMinute(0));
+        } catch (RuntimeException e) {
+            System.out.println("Blocked: " + e.getMessage());
+        }
         System.out.println();
 
-        // --- Deadline auto-miss ---
-        Session s3 = new Session(3, alice, trainer,
-                LocalDateTime.now().plusDays(7).withHour(14).withMinute(0));
-        s3.accept();
-        s3.markNotHeldByDeadline();
-        System.out.println("Third session trainer forgot:");
-        System.out.println("  status = " + s3.getStatus()
-                + " (reason " + s3.getNotHeldReason() + ")");
-        System.out.println("  trainer = " + s3.getTrainerStatus());
+        // --- Reports ---
+        System.out.println("=== REPORTS ===");
+        System.out.println("Sessions by status: " + gym.countSessionsByStatus());
+        System.out.println("Members by plan:    " + gym.countMembersByPlan());
+        System.out.println("Trainer attendance: " + gym.countTrainerStatus());
+        System.out.printf("Total revenue:      %.2f%n", gym.getTotalRevenue());
         System.out.println();
 
-        // --- Attendance record ---
-        AttendanceRecord att = new AttendanceRecord(1, alice, trainer, s1);
-        System.out.println("=== ATTENDANCE ===");
-        System.out.println(att);
+        // --- Attendance history ---
+        System.out.println("=== ALICE ATTENDANCE ===");
+        gym.getAttendanceForMember(alice.getId())
+                .forEach(a -> System.out.println("  " + a));
     }
 }

@@ -9,7 +9,11 @@ dev\gymmetry\domain\Admin.class
 dev\gymmetry\enums\CancellationReason.class
 dev\gymmetry\domain\Session.class
 dev\gymmetry\domain\MembershipPlan.class
+dev\gymmetry\service\Gym.class
 dev\gymmetry\domain\BasicPlan.class
+dev\gymmetry\exception\SessionNotFoundException.class
+dev\gymmetry\exception\TrainerNotFoundException.class
+dev\gymmetry\exception\DuplicateUserException.class
 dev\gymmetry\domain\Person.class
 dev\gymmetry\exception\MembershipExpiredException.class
 dev\gymmetry\enums\MembershipStatus.class
@@ -18,8 +22,11 @@ dev\gymmetry\domain\Member.class
 dev\gymmetry\enums\NotHeldReason.class
 dev\gymmetry\domain\User.class
 dev\gymmetry\enums\PaymentStatus.class
+dev\gymmetry\exception\MemberNotFoundException.class
 dev\gymmetry\domain\PremiumPlan.class
 dev\gymmetry\domain\VipPlan.class
+dev\gymmetry\service\AuthService.class
 dev\gymmetry\enums\PaymentMethod.class
+dev\gymmetry\exception\AuthenticationException.class
 dev\gymmetry\GymmetryApplication.class
 dev\gymmetry\enums\AccountStatus.class
