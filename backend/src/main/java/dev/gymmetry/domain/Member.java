@@ -97,6 +97,16 @@ public class Member extends Person {
         return plan.calculateMonthlyFee();
     }
 
+    /**
+     * Returns true if 6 months have passed since expiry with no renewal.
+     * Used by AuthService to lazily disable stale accounts on login.
+     */
+    
+    public boolean isAutoDisableDue() {
+        if (expiryDate == null) return false;   // never activated, skip
+        return LocalDate.now().isAfter(expiryDate.plusMonths(6));
+    }
+
     @Override
     public Role getRole() { return Role.MEMBER; }
 

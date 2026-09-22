@@ -15,6 +15,7 @@ import dev.gymmetry.domain.MembershipPlan;
 import dev.gymmetry.domain.Payment;
 import dev.gymmetry.domain.Session;
 import dev.gymmetry.domain.Trainer;
+import dev.gymmetry.domain.User;
 import dev.gymmetry.enums.MembershipStatus;
 import dev.gymmetry.enums.PaymentMethod;
 import dev.gymmetry.enums.PaymentStatus;
@@ -56,7 +57,7 @@ public class Gym {
         int id = nextMemberId++;
         Member m = new Member(id, name, email, plan);
         members.put(id, m);
-        authService.createUser(username, password, m);
+        authService.createUser(username, password, m, true);
         return m;
     }
 
@@ -79,7 +80,7 @@ public class Gym {
         int id = nextTrainerId++;
         Trainer t = new Trainer(id, name, email);
         trainers.put(id, t);
-        authService.createUser(username, password, t);
+        authService.createUser(username, password, t, true);
         return t;
     }
 
@@ -373,5 +374,17 @@ public class Gym {
 
     public AuthService getAuthService() {
         return authService;
+    }
+    public void setAccountStatus(String username, boolean enabled) {
+        User user = authService.findByUsername(username);
+        if (user == null) {
+            throw new IllegalArgumentException("No user with username: " + username);
+        }
+        if (enabled) authService.enableUser(user);
+        else authService.disableUser(user);
+    }
+
+    public User findUserByUsername(String username) {
+        return authService.findByUsername(username);
     }
 }

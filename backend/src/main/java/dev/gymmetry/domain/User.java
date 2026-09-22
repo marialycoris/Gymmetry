@@ -10,6 +10,7 @@ public class User {
     private final Role role;
     private final Person person;
     private AccountStatus accountStatus;
+    private boolean mustChangePassword;
 
     public User(String username, String passwordHash, Role role, Person person) {
         if (username == null || username.isBlank())
@@ -47,6 +48,12 @@ public class User {
 
     public boolean canLogin() {
         return accountStatus == AccountStatus.ENABLED;
+    }
+
+    public boolean mustChangePassword() { return mustChangePassword; }
+
+    public void setMustChangePassword(boolean flag) {
+        this.mustChangePassword = flag;
     }
 
     @Override
