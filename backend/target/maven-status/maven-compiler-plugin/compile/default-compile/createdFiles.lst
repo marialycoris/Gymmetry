@@ -1,0 +1,5 @@
+dev\gymmetry\domain\PremiumPlan.class
+dev\gymmetry\domain\VipPlan.class
+dev\gymmetry\domain\BasicPlan.class
+dev\gymmetry\GymmetryApplication.class
+dev\gymmetry\domain\MembershipPlan.class
