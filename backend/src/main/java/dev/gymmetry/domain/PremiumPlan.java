@@ -3,15 +3,10 @@ package dev.gymmetry.domain;
 import java.util.List;
 
 public class PremiumPlan extends MembershipPlan {
-
-    public PremiumPlan() {
-        super("Premium", 1000.0);
-    }
+    public PremiumPlan() { super("Premium", 1000.0, 3); }
 
     @Override
-    public double calculateMonthlyFee() {
-        return getBasePrice() * 1.05;
-    }
+    public double calculateMonthlyFee() { return getBasePrice() * 1.05; }
 
     @Override
     public List<String> getFeatures() {
