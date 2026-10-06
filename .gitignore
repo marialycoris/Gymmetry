@@ -1,0 +1,5 @@
+# IDE
+.vscode/
+
+# Git config (if you don't want to commit it)
+.gitattributes
