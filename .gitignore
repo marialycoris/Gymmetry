@@ -1,5 +1,17 @@
 # IDE
 .vscode/
 
-# Git config (if you don't want to commit it)
-.gitattributes
+# Java / Maven
+target/
+*.class
+
+# Node (for later)
+node_modules/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
