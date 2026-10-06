@@ -66,6 +66,7 @@ Each role sees only the actions it's permitted to perform.
 | Build Tool | Maven |
 | Database | PostgreSQL 17 |
 | Security | BCrypt (Spring Security Crypto) |
+| Frontend (planned) | React + TypeScript + Tailwind CSS |
 | Version Control | Git + GitHub |
 
 ## Project Structure
