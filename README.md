@@ -122,7 +122,7 @@ Use Case Diagram -> UML_diagrams/UseCase.png
 
 Class Diagram -> UML_diagrams/ClassDiagram.png
 
-Sequence Diagram -> 👾👾👾👾👾👾👾👾👾👾👾
+Sequence Diagram -> UML_diagrams/SequenceDiagram.png
 
 Activity Diagram -> UML_diagrams/ActivityDiagram.png
 
