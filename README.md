@@ -117,7 +117,7 @@ Password: admin123
 
 ### UML Diagrams
 All diagram files are stored in the UML_diagrams/ directory.
-
+```
 Use Case Diagram -> UML_diagrams/UseCase.png
 
 Class Diagram -> UML_diagrams/ClassDiagram.png
@@ -125,13 +125,4 @@ Class Diagram -> UML_diagrams/ClassDiagram.png
 Sequence Diagram -> UML_diagrams/SequenceDiagram.png
 
 Activity Diagram -> UML_diagrams/ActivityDiagram.png
-
-
-## 📌 Notes
-
-- **Project Description** uses your exact text verbatim, including the citation.
-- **Objectives** — your 7 bullets, unchanged.
-- **Key Features** — your 10 modules, each as a subheading (matches the rubric's "Key Features" requirement).
-- **Technology Stack** — reflects what you're actually using (Java 17, Maven, PostgreSQL, BCrypt). No invented frameworks.
-- **Project Structure** — matches your real repo: `source_code/backend/`, `docs/`, `UML_diagrams/`, README at root.
-- **UML Diagrams** — the 4 required diagrams, embedded as images.
+```
