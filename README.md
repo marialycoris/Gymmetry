@@ -116,13 +116,14 @@ Password: admin123
 ```
 
 ### UML Diagrams
-All diagram files are stored in the UML_diagrams/ directory.
+
 ```
-Use Case Diagram -> UML_diagrams/UseCase.png
+Use Case Diagram -> https://drive.google.com/file/d/1OvcyyGdVhXLmDtI7FNU1ZwnMG2JZRvRe/view?usp=drive_link
 
-Class Diagram -> UML_diagrams/ClassDiagram.png
+Class Diagram -> https://drive.google.com/file/d/1Bu0xiMndS38IwmjBtsm0O_Cn6HSly6CV/view?usp=drive_link
 
-Sequence Diagram -> UML_diagrams/SequenceDiagram.png
+Sequence Diagram -> https://drive.google.com/file/d/1ewgt1jRo30dlitkDIEZ5dQHvy3QE-3Y9/view?usp=drive_link
 
-Activity Diagram -> UML_diagrams/ActivityDiagram.png
+Activity Diagram -> https://drive.google.com/file/d/1W_8G1LUVu4bOr0dcyuPg8_lI4WfulUnL/view?usp=drive_link
 ```
+All diagram files are stored in the UML_diagrams/ directory as well.
