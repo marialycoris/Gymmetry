@@ -1,62 +1,90 @@
-# Gymmetry: A Membership, Session Booking, and Attendance Management System for Fitness Centers
+# Gymmetry: A Membership, Session Booking, Attendance Management, and Member Engagement System for Fitness Centers
 
 ## Project Description
 
 A study by Abu Bakar and Md Said (2019) identified problems associated with manual booking, including the need for customers to visit the gym personally, difficulty checking class or trainer availability, possible duplicate bookings, and the risk of misplaced booking records. The researchers also reported that 90% of their 30 respondents indicated a need for an improved booking process (Abu Bakar & Md Said, 2019).
 
-To address these problems, Gymmetry provides a centralized gym-management system with separate role-based access for **Admin**, **Trainer**, and **Member**. Members can register, manage their membership information, view available sessions and trainers, book sessions, monitor attendance, and access membership-status records. Trainers can view their schedules, manage assigned sessions, and record member attendance. Administrators can manage accounts, memberships, sessions, trainer schedules, attendance records, and payments through a centralized dashboard.
+To address these problems, Gymmetry provides a centralized gym-management system with separate role-based access for **Admin**, **Trainer**, and **Member**. Members can manage their membership information, view available sessions and trainers, book sessions, monitor attendance, and access membership-status records. Trainers can view their schedules, manage assigned sessions, and record member attendance. Administrators can manage accounts, memberships, sessions, trainer schedules, attendance records, and payments through a centralized dashboard.
 
-By replacing scattered manual records with a structured digital system, Gymmetry aims to reduce booking conflicts, improve information accessibility, support more efficient administrative work, and provide members with a more convenient gym-booking experience.
+Beyond standard gym-management functions, Gymmetry introduces **Gymmetry Pulse** and **Gymmetry FairSlot** to improve member engagement and session scheduling. Gymmetry Pulse analyzes attendance patterns and membership activity to help administrators identify changes in participation and prioritize member follow-ups. Gymmetry FairSlot improves the booking experience through waitlists, available-slot notifications, and alternative session suggestions when preferred schedules are fully booked or become unavailable.
 
-### Target Users / Stakeholders
+By combining centralized record management with engagement insights and more flexible booking options, Gymmetry aims to reduce booking conflicts, improve information accessibility, support more efficient administrative work, and provide a more convenient experience for both gym staff and members.
+
+## Target Users / Stakeholders
 
 | Stakeholder | Role |
 |---|---|
-| **Gym Admin / Owner** | Manages members, trainers, payments, and reviews reports |
-| **Trainer** | Handles session requests and records member attendance |
-| **Member** | Books sessions with trainers, manages their own membership |
+| **Gym Admin / Owner** | Manages members, trainers, payments, and reports; reviews member engagement insights and scheduling trends |
+| **Trainer** | Handles session requests, manages assigned schedules, and records member attendance |
+| **Member** | Manages their membership, books sessions, monitors attendance, and receives relevant booking notifications |
 
 ## Objectives
 
-1. **Digitize membership management** — replace paper and spreadsheets with a structured database
-2. **Automate membership lifecycle** — from registration and payment, through expiry, to renewal or disablement
-3. **Provide structured session booking** — with member-chosen trainers, trainer accept/decline, and reschedule/cancel rules
-4. **Ensure accurate attendance tracking** — member attendance is verified through completed sessions, not self-reported
-5. **Empower admins with oversight** — the ability to override trainer attendance, review declined sessions, and generate reports
-6. **Enforce business rules consistently** — like blocking expired members from booking, and auto-disabling accounts after 6 months of inactivity
-7. **Provide a foundation for future expansion** — a REST API and web frontend for broader accessibility
+1. **Digitize membership management** — replace paper-based records and spreadsheets with a structured database.
+2. **Automate the membership lifecycle** — manage registration, payment recording, activation, expiry, renewal, and account disablement.
+3. **Provide structured session booking** — allow members to choose trainers and time slots while enforcing trainer responses, rescheduling, cancellation, and booking-conflict rules.
+4. **Improve session availability and booking flexibility** — implement waitlists, available-slot notifications, and alternative session suggestions through Gymmetry FairSlot.
+5. **Ensure accurate attendance tracking** — record member attendance based on completed sessions rather than self-reported attendance.
+6. **Empower administrators with oversight** — allow attendance overrides, review of declined sessions, reassignment of bookings, and report generation.
+7. **Provide member engagement insights** — use Gymmetry Pulse to analyze attendance patterns and membership activity, identify potential changes in participation, and support timely member follow-ups.
+8. **Enforce business rules consistently** — prevent expired members from booking sessions and automatically disable accounts after six months of inactivity, according to the system's defined rules.
+9. **Provide a foundation for future expansion** — support a REST API and web frontend for broader accessibility and future enhancements.
 
 ## Key Features
 
 ### 1. Authentication & User Management
-Role-based login (Admin, Trainer, Member) with password hashing (BCrypt) and first-login password change.
+Role-based login for Admin, Trainer, and Member accounts, with password hashing using BCrypt and a first-login password change requirement.
 
 ### 2. Membership Management
-Registration, plan assignment (Basic / Premium / VIP), activation, renewal, expiry tracking, and 6-month auto-disable.
+Member registration, plan assignment (Basic / Premium / VIP), activation, renewal, expiry tracking, and automatic account disablement after six months of inactivity.
 
 ### 3. Payment Recording
-Admin records payments (Cash / Card / E-wallet) with history per member and revenue totals.
+Admin records payments through Cash, Card, or E-wallet, with payment history per member and revenue totals for administrative reporting.
 
 ### 4. Session Booking
-Members choose trainers and time slots; the system prevents conflicts.
+Members select trainers and available time slots. The system validates availability and prevents conflicting bookings.
 
 ### 5. Trainer Response Workflow
-Trainers accept or decline requested sessions (with a reason).
+Trainers review session requests and accept or decline them, with a reason required for declined requests.
 
 ### 6. Decline Review & Reassignment
-Admin reviews declined sessions and may reassign them to another trainer.
+Administrators review declined sessions and may reassign them to another trainer to help members secure an alternative schedule.
 
 ### 7. Attendance Tracking
-Trainer marks a session as completed → member attendance is auto-recorded; admin can override trainer attendance.
+Trainers mark sessions as completed, which automatically records member attendance. Administrators can override trainer attendance when necessary.
 
 ### 8. Deadline Sweep
-Sessions not marked by the trainer by midnight are auto-flagged `NOT_HELD` and the trainer marked absent.
+Sessions that have not been marked by the trainer by midnight are automatically flagged as `NOT_HELD`, and the trainer is marked absent according to the system's attendance rules.
 
 ### 9. Reports
-Revenue totals, active vs. inactive members, sessions by status, members per plan, trainer attendance.
+Generate reports covering revenue totals, active and inactive members, sessions by status, members per membership plan, and trainer attendance.
 
 ### 10. Role-Based Dashboards
-Each role sees only the actions it's permitted to perform.
+Each role has access to the features and actions permitted by its assigned permissions.
+
+### 11. Gymmetry Pulse — Member Engagement Insights
+Analyze member attendance history, booking activity, and membership status to identify changes in participation and potential follow-up needs.
+
+Key capabilities:
+- Track member attendance patterns over time.
+- Identify declining attendance compared with a member's previous activity.
+- Highlight upcoming membership expirations and other relevant engagement indicators.
+- Provide administrators with explanations for flagged records and suggested follow-up actions.
+- Present attendance and engagement trends through dashboard summaries.
+
+Pulse provides rule-based indicators to support staff decisions. A flagged member is not automatically considered likely to cancel their membership, and staff can review the available context before taking action.
+
+### 12. Gymmetry FairSlot — Flexible Session Booking
+Improve session availability and help members find suitable alternatives when their preferred time slots are unavailable.
+
+Key capabilities:
+- Allow members to join a waitlist for fully booked sessions.
+- Notify waitlisted members when a slot becomes available following a cancellation or schedule change.
+- Suggest alternative sessions or trainers when a requested slot is unavailable.
+- Maintain a transparent waitlist order based on defined booking rules.
+- Provide administrators with insights into frequently requested time slots and scheduling demand.
+
+FairSlot aims to make better use of available trainer schedules while giving members more opportunities to book suitable sessions.
 
 ## Technology Stack
 
