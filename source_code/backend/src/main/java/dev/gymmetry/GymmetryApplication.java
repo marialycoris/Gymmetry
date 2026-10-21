@@ -1,18 +1,26 @@
 package dev.gymmetry;
 
-import dev.gymmetry.db.Database;
 import dev.gymmetry.db.SchemaInitializer;
 import dev.gymmetry.domain.Admin;
 import dev.gymmetry.repository.*;
 import dev.gymmetry.service.AuthService;
 import dev.gymmetry.service.Gym;
-import dev.gymmetry.ui.ConsoleUI;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
 
+@SpringBootApplication
 public class GymmetryApplication {
 
     public static void main(String[] args) {
-        System.out.println("Connecting to database...");
-        Database.testConnection();
+        // Start the Spring Boot web server
+        SpringApplication.run(GymmetryApplication.class, args);
+    }
+
+    // Spring Boot will use this to inject Gym and AuthService where needed
+    @Bean
+    public Gym gym() {
+        System.out.println("Initializing Gymmetry components...");
         SchemaInitializer.initialize();
 
         Admin admin = new Admin(0, "Root Admin", "admin@gymmetry.dev");
@@ -30,9 +38,11 @@ public class GymmetryApplication {
             System.out.println("  ✓ Admin seeded");
         }
 
-        Gym gym = new Gym(memberRepo, trainerRepo, sessionRepo, paymentRepo, attendanceRepo, auth);
+        return new Gym(memberRepo, trainerRepo, sessionRepo, paymentRepo, attendanceRepo, auth);
+    }
 
-        ConsoleUI ui = new ConsoleUI(gym, auth);
-        ui.start();
+    @Bean
+    public AuthService authService(Gym gym) {
+        return gym.getAuthService();
     }
 }
