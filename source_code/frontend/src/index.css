@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gym-bg: #FFFFFE;
+  --color-gym-black: #030303;
+  --color-gym-crimson: #F21137;
+  --color-gym-maroon: #68020F;
+}
+
+body {
+  background-color: var(--color-gym-bg);
+  color: var(--color-gym-black);
+  font-family: 'Inter', system-ui, sans-serif;
+  margin: 0;
+}
