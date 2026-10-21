@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;800&family=Barlow:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
@@ -5,11 +6,18 @@
   --color-gym-black: #030303;
   --color-gym-crimson: #F21137;
   --color-gym-maroon: #68020F;
+
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-sans: 'Barlow', system-ui, sans-serif;
 }
 
 body {
   background-color: var(--color-gym-bg);
   color: var(--color-gym-black);
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
 }
