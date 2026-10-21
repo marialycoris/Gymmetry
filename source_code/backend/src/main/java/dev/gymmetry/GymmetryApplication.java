@@ -6,6 +6,7 @@ import dev.gymmetry.domain.Admin;
 import dev.gymmetry.repository.*;
 import dev.gymmetry.service.AuthService;
 import dev.gymmetry.service.Gym;
+import dev.gymmetry.ui.ConsoleUI;
 
 public class GymmetryApplication {
 
@@ -15,10 +16,12 @@ public class GymmetryApplication {
         SchemaInitializer.initialize();
 
         Admin admin = new Admin(0, "Root Admin", "admin@gymmetry.dev");
+        
         MemberRepository memberRepo = new MemberRepository();
         TrainerRepository trainerRepo = new TrainerRepository();
         SessionRepository sessionRepo = new SessionRepository(memberRepo, trainerRepo);
         PaymentRepository paymentRepo = new PaymentRepository(memberRepo);
+        AttendanceRepository attendanceRepo = new AttendanceRepository(memberRepo, trainerRepo, sessionRepo);
         UserRepository userRepo = new UserRepository(memberRepo, trainerRepo, admin);
 
         AuthService auth = new AuthService(userRepo);
@@ -27,7 +30,7 @@ public class GymmetryApplication {
             System.out.println("  ✓ Admin seeded");
         }
 
-        Gym gym = new Gym(memberRepo, trainerRepo, sessionRepo, paymentRepo, auth);
+        Gym gym = new Gym(memberRepo, trainerRepo, sessionRepo, paymentRepo, attendanceRepo, auth);
 
         ConsoleUI ui = new ConsoleUI(gym, auth);
         ui.start();

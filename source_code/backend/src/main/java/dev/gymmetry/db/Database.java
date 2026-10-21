@@ -6,10 +6,9 @@ import java.sql.SQLException;
 
 public class Database {
 
-    private static final String URL =
-            "jdbc:postgresql://localhost:5432/gymmetry";
+    private static final String URL = "jdbc:postgresql://127.0.0.1:5433/gymmetry";
     private static final String USER = "postgres";
-    private static final String PASSWORD = "YOUR_PGADMIN_PASSWORD";
+    private static final String PASSWORD = "123";
 
     private Database() {}
 

@@ -35,7 +35,7 @@ public class SessionRepository {
             bind(ps, s, false);
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
-                s.assignId(rs.getInt("id"));
+                s.setId(rs.getInt("id"));
                 return s;
             }
         } catch (SQLException e) {

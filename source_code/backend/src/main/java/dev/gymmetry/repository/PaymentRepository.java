@@ -6,7 +6,7 @@ import dev.gymmetry.enums.PaymentMethod;
 import dev.gymmetry.enums.PaymentStatus;
 
 import java.sql.*;
-import java.time.LocalDateTime;
+// import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -75,7 +75,7 @@ public class PaymentRepository {
 
         // Payment constructor generates its own timestamp; we set what we need after
         Payment p = new Payment(rs.getInt("id"), m, plan, rs.getDouble("amount"),
-                method, new Admin(0, rs.getString("recorded_by"), ""));
+        method, new Admin(0, rs.getString("recorded_by"), "admin@gymmetry.dev"));
         p.setStatus(PaymentStatus.valueOf(rs.getString("status")));
         p.setNotes(rs.getString("notes"));
         return p;

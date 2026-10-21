@@ -1,49 +1,37 @@
 package dev.gymmetry.service;
 
+import dev.gymmetry.domain.*;
+import dev.gymmetry.enums.*;
+import dev.gymmetry.exception.*;
+import dev.gymmetry.repository.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.HashMap;
+// import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import dev.gymmetry.domain.Admin;
-import dev.gymmetry.domain.AttendanceRecord;
-import dev.gymmetry.domain.Member;
-import dev.gymmetry.domain.MembershipPlan;
-import dev.gymmetry.domain.Payment;
-import dev.gymmetry.domain.Session;
-import dev.gymmetry.domain.Trainer;
-import dev.gymmetry.domain.User;
-import dev.gymmetry.enums.MembershipStatus;
-import dev.gymmetry.enums.PaymentMethod;
-import dev.gymmetry.enums.PaymentStatus;
-import dev.gymmetry.enums.SessionStatus;
-import dev.gymmetry.enums.TrainerSessionStatus;
-import dev.gymmetry.exception.MemberNotFoundException;
-import dev.gymmetry.exception.MembershipExpiredException;
-import dev.gymmetry.exception.SessionNotFoundException;
-import dev.gymmetry.exception.TrainerNotFoundException;
-
 public class Gym {
 
-    // --- Storage ---
     private final MemberRepository memberRepo;
     private final TrainerRepository trainerRepo;
     private final SessionRepository sessionRepo;
     private final PaymentRepository paymentRepo;
+    private final AttendanceRepository attendanceRepo;
     private final AuthService authService;
 
     public Gym(MemberRepository memberRepo, TrainerRepository trainerRepo,
-           SessionRepository sessionRepo, PaymentRepository paymentRepo,
-           AuthService authService) {
-    this.memberRepo = memberRepo;
-    this.trainerRepo = trainerRepo;
-    this.sessionRepo = sessionRepo;
-    this.paymentRepo = paymentRepo;
-    this.authService = authService;
-}
+               SessionRepository sessionRepo, PaymentRepository paymentRepo,
+               AttendanceRepository attendanceRepo, AuthService authService) {
+        this.memberRepo = memberRepo;
+        this.trainerRepo = trainerRepo;
+        this.sessionRepo = sessionRepo;
+        this.paymentRepo = paymentRepo;
+        this.attendanceRepo = attendanceRepo;
+        this.authService = authService;
+    }
+
     // ============================================================
     // MEMBERS
     // ============================================================
@@ -51,21 +39,20 @@ public class Gym {
     public Member registerMember(String name, String email,
                                  MembershipPlan plan,
                                  String username, String password) {
-        int id = nextMemberId++;
-        Member m = new Member(id, name, email, plan);
-        members.put(id, m);
+        Member m = new Member(0, name, email, plan); // temp ID
+        m = memberRepo.save(m);                      // returns with real ID
         authService.createUser(username, password, m, true);
         return m;
     }
 
     public Member findMember(int id) {
-        Member m = members.get(id);
+        Member m = memberRepo.findById(id);
         if (m == null) throw new MemberNotFoundException(id);
         return m;
     }
 
     public List<Member> getAllMembers() {
-        return new ArrayList<>(members.values());
+        return memberRepo.findAll();
     }
 
     // ============================================================
@@ -74,21 +61,20 @@ public class Gym {
 
     public Trainer registerTrainer(String name, String email,
                                    String username, String password) {
-        int id = nextTrainerId++;
-        Trainer t = new Trainer(id, name, email);
-        trainers.put(id, t);
+        Trainer t = new Trainer(0, name, email); // temp ID
+        t = trainerRepo.save(t);
         authService.createUser(username, password, t, true);
         return t;
     }
 
     public Trainer findTrainer(int id) {
-        Trainer t = trainers.get(id);
+        Trainer t = trainerRepo.findById(id);
         if (t == null) throw new TrainerNotFoundException(id);
         return t;
     }
 
     public List<Trainer> getAllTrainers() {
-        return new ArrayList<>(trainers.values());
+        return trainerRepo.findAll();
     }
 
     // ============================================================
@@ -99,10 +85,10 @@ public class Gym {
                                  double amount, PaymentMethod method,
                                  Admin recordedBy) {
         Member member = findMember(memberId);
-        int id = nextPaymentId++;
-
-        Payment payment = new Payment(id, member, plan, amount, method, recordedBy);
-        payments.put(id, payment);
+        
+        // Save payment (id = 0, DB will assign)
+        Payment payment = new Payment(0, member, plan, amount, method, recordedBy);
+        paymentRepo.save(payment);
 
         // Activate or renew based on current state
         if (member.getMembershipStatus() == MembershipStatus.PENDING_PAYMENT) {
@@ -111,42 +97,31 @@ public class Gym {
         } else {
             member.renew(plan, LocalDate.now());
         }
-
+        
+        memberRepo.update(member);
         return payment;
     }
 
-    public List<Payment> getPaymentsForMember(int memberId) {
-        return payments.values().stream()
-                .filter(p -> p.getMember().getId() == memberId)
-                .collect(Collectors.toList());
-    }
-
     public double getTotalRevenue() {
-        double total = 0;
-        for (Payment p : payments.values()) {
-            if (p.getStatus() == PaymentStatus.PAID) {
-                total += p.getAmount();
-            }
-        }
-        return total;
+        return paymentRepo.findAll().stream()
+                .filter(p -> p.getStatus() == PaymentStatus.PAID)
+                .mapToDouble(Payment::getAmount)
+                .sum();
     }
 
     // ============================================================
     // SESSION BOOKING
     // ============================================================
 
-    public Session requestSession(int memberId, int trainerId,
-                                  LocalDateTime when) {
+    public Session requestSession(int memberId, int trainerId, LocalDateTime when) {
         Member member = findMember(memberId);
         Trainer trainer = findTrainer(trainerId);
 
-        // Gate: membership must be valid to book
         member.refreshStatus();
         if (!member.isMembershipValid()) {
             throw new MembershipExpiredException(memberId, member.getExpiryDate());
         }
 
-        // Gate: no conflicts
         if (memberHasConflict(member, when)) {
             throw new IllegalStateException("Member already has a session at that time");
         }
@@ -154,72 +129,69 @@ public class Gym {
             throw new IllegalStateException("Trainer already has a session at that time");
         }
 
-        int id = nextSessionId++;
-        Session s = new Session(id, member, trainer, when);
-        sessions.put(id, s);
-        return s;
+        Session s = new Session(0, member, trainer, when);
+        return sessionRepo.save(s);
     }
 
     public Session findSession(int id) {
-        Session s = sessions.get(id);
+        Session s = sessionRepo.findById(id);
         if (s == null) throw new SessionNotFoundException(id);
         return s;
     }
 
     public List<Session> getSessionsForMember(int memberId) {
-        return sessions.values().stream()
+        return sessionRepo.findAll().stream()
                 .filter(s -> s.getMember().getId() == memberId)
                 .collect(Collectors.toList());
     }
 
     public List<Session> getSessionsForTrainer(int trainerId) {
-        return sessions.values().stream()
+        return sessionRepo.findAll().stream()
                 .filter(s -> s.getTrainer().getId() == trainerId)
                 .collect(Collectors.toList());
     }
 
     public List<Session> getSessionsByStatus(SessionStatus status) {
-        return sessions.values().stream()
+        return sessionRepo.findAll().stream()
                 .filter(s -> s.getStatus() == status)
                 .collect(Collectors.toList());
     }
 
     // ============================================================
-    // TRAINER RESPONSES
+    // ACTIONS
     // ============================================================
 
     public void trainerAccept(int sessionId, Trainer trainer) {
         Session s = findSession(sessionId);
         requireOwnership(s, trainer);
         s.accept();
+        sessionRepo.update(s);
     }
 
     public void trainerDecline(int sessionId, Trainer trainer, String reason) {
         Session s = findSession(sessionId);
         requireOwnership(s, trainer);
         s.decline(reason);
+        sessionRepo.update(s);
     }
 
     public void trainerMarkPresent(int sessionId, Trainer trainer) {
         Session s = findSession(sessionId);
         requireOwnership(s, trainer);
         s.markMemberPresent();
+        sessionRepo.update(s);
 
-        // Create attendance record automatically
-        int attId = nextAttendanceId++;
-        AttendanceRecord att = new AttendanceRecord(attId, s.getMember(), trainer, s);
-        attendanceRecords.put(attId, att);
+        // Create attendance record
+        AttendanceRecord att = new AttendanceRecord(0, s.getMember(), trainer, s);
+        attendanceRepo.save(att);
     }
 
     public void trainerMarkNoShow(int sessionId, Trainer trainer) {
         Session s = findSession(sessionId);
         requireOwnership(s, trainer);
         s.markMemberNoShow();
+        sessionRepo.update(s);
     }
-
-    // ============================================================
-    // MEMBER ACTIONS
-    // ============================================================
 
     public void memberReschedule(int sessionId, Member member,
                                  LocalDateTime newTime, Trainer newTrainer) {
@@ -228,10 +200,10 @@ public class Gym {
             throw new IllegalStateException("Not your session");
         }
         if (!memberCanEdit(s)) {
-            throw new IllegalStateException(
-                "Cannot reschedule — less than 48h remain or session not editable");
+            throw new IllegalStateException("Cannot reschedule — less than 48h remain or session not editable");
         }
         s.reschedule(newTime, newTrainer);
+        sessionRepo.update(s);
     }
 
     public void memberCancel(int sessionId, Member member) {
@@ -240,19 +212,16 @@ public class Gym {
             throw new IllegalStateException("Not your session");
         }
         if (!memberCanEdit(s)) {
-            throw new IllegalStateException(
-                "Cannot cancel — less than 48h remain or session not editable");
+            throw new IllegalStateException("Cannot cancel — less than 48h remain or session not editable");
         }
         s.memberCancel();
+        sessionRepo.update(s);
     }
-
-    // ============================================================
-    // ADMIN OVERRIDES
-    // ============================================================
 
     public void adminMarkTrainerAbsent(int sessionId, Admin admin, String reason) {
         Session s = findSession(sessionId);
         s.adminMarkTrainerAbsent(reason);
+        sessionRepo.update(s);
     }
 
     public void adminOverrideTrainerStatus(int sessionId, Admin admin,
@@ -260,80 +229,54 @@ public class Gym {
                                             String reason) {
         Session s = findSession(sessionId);
         s.adminOverrideTrainerStatus(status, reason);
+        sessionRepo.update(s);
     }
 
-    public void adminCancelSession(int sessionId, Admin admin) {
-        Session s = findSession(sessionId);
-        s.adminMarkTrainerAbsent("Cancelled by admin");
-    }
-
-    // ============================================================
-    // DEADLINE SWEEP (call this manually or on app start)
-    // ============================================================
-
-    /**
-     * Marks any SCHEDULED session past its deadline with no trainer action
-     * as NOT_HELD / trainer ABSENT.
-     */
     public int sweepMissedDeadlines() {
         int count = 0;
-        for (Session s : sessions.values()) {
+        for (Session s : sessionRepo.findAll()) {
             if (s.getStatus() == SessionStatus.SCHEDULED && s.isPastDeadline()) {
                 s.markNotHeldByDeadline();
+                sessionRepo.update(s);
                 count++;
             }
         }
         return count;
     }
 
-    // ============================================================
-    // AVAILABILITY
-    // ============================================================
-
     public List<Trainer> getAvailableTrainers(LocalDateTime when) {
-        return trainers.values().stream()
+        return trainerRepo.findAll().stream()
                 .filter(t -> !trainerHasConflict(t, when))
                 .collect(Collectors.toList());
     }
 
-    // ============================================================
-    // ATTENDANCE
-    // ============================================================
-
     public List<AttendanceRecord> getAttendanceForMember(int memberId) {
-        return attendanceRecords.values().stream()
+        return attendanceRepo.findAll().stream()
                 .filter(a -> a.getMember().getId() == memberId)
                 .collect(Collectors.toList());
     }
 
-    public List<AttendanceRecord> getAttendanceForTrainer(int trainerId) {
-        return attendanceRecords.values().stream()
-                .filter(a -> a.getTrainer().getId() == trainerId)
-                .collect(Collectors.toList());
-    }
-
-    // ============================================================
-    // REPORTS
-    // ============================================================
-
     public Map<SessionStatus, Long> countSessionsByStatus() {
-        return sessions.values().stream()
+        return sessionRepo.findAll().stream()
                 .collect(Collectors.groupingBy(Session::getStatus, Collectors.counting()));
     }
 
     public Map<String, Long> countMembersByPlan() {
-        return members.values().stream()
+        return memberRepo.findAll().stream()
                 .collect(Collectors.groupingBy(
                         m -> m.getPlan().getName(),
                         Collectors.counting()));
     }
 
-    public Map<TrainerSessionStatus, Long> countTrainerStatus() {
-        return sessions.values().stream()
-                .filter(s -> s.getStatus() != SessionStatus.REQUESTED)
-                .collect(Collectors.groupingBy(
-                        Session::getTrainerStatus,
-                        Collectors.counting()));
+    public void setAccountStatus(String username, boolean enabled) {
+        User user = authService.findByUsername(username);
+        if (user == null) throw new IllegalArgumentException("No user: " + username);
+        if (enabled) authService.enableUser(user);
+        else authService.disableUser(user);
+    }
+
+    public AuthService getAuthService() {
+        return authService;
     }
 
     // ============================================================
@@ -341,7 +284,7 @@ public class Gym {
     // ============================================================
 
     private boolean memberHasConflict(Member m, LocalDateTime when) {
-        return sessions.values().stream().anyMatch(s ->
+        return sessionRepo.findAll().stream().anyMatch(s ->
                 s.getMember().getId() == m.getId()
                         && s.getScheduledAt().equals(when)
                         && (s.getStatus() == SessionStatus.REQUESTED
@@ -349,7 +292,7 @@ public class Gym {
     }
 
     private boolean trainerHasConflict(Trainer t, LocalDateTime when) {
-        return sessions.values().stream().anyMatch(s ->
+        return sessionRepo.findAll().stream().anyMatch(s ->
                 s.getTrainer().getId() == t.getId()
                         && s.getScheduledAt().equals(when)
                         && (s.getStatus() == SessionStatus.REQUESTED
@@ -367,21 +310,5 @@ public class Gym {
         if (s.getTrainer().getId() != trainer.getId()) {
             throw new IllegalStateException("This session is not assigned to you");
         }
-    }
-
-    public AuthService getAuthService() {
-        return authService;
-    }
-    public void setAccountStatus(String username, boolean enabled) {
-        User user = authService.findByUsername(username);
-        if (user == null) {
-            throw new IllegalArgumentException("No user with username: " + username);
-        }
-        if (enabled) authService.enableUser(user);
-        else authService.disableUser(user);
-    }
-
-    public User findUserByUsername(String username) {
-        return authService.findByUsername(username);
     }
 }
