@@ -4,6 +4,7 @@ import dev.gymmetry.domain.Member;
 import dev.gymmetry.domain.Person;
 import dev.gymmetry.domain.User;
 import dev.gymmetry.enums.AccountStatus;
+import dev.gymmetry.enums.Role;
 import dev.gymmetry.exception.AccountDisabledException;
 import dev.gymmetry.exception.AuthenticationException;
 import dev.gymmetry.exception.DuplicateUserException;
@@ -91,6 +92,10 @@ public class AuthService {
 
     public User findByUsername(String username) {
         return userRepo.findByUsername(username);
+    }
+
+    public User findByPerson(Role role, int personId) {
+        return userRepo.findByPerson(role, personId);
     }
 
     public void disableUser(User user) {

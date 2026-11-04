@@ -61,6 +61,21 @@ public class UserRepository {
         }
     }
 
+    public User findByPerson(Role role, int personId) {
+        String sql = "SELECT * FROM users WHERE role = ? AND person_id = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, role.name());
+            ps.setInt(2, personId);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return null;
+                return mapRow(rs);
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find user for person", e);
+        }
+    }
+
     public List<User> findAll() {
         String sql = "SELECT * FROM users ORDER BY username";
         List<User> result = new ArrayList<>();

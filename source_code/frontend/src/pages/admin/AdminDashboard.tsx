@@ -7,6 +7,7 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Loading, Notice, Stat } from '../../components/Widgets';
 import { MembersTab } from './MembersTab';
+import { TrainersTab } from './TrainersTab';
 import { PaymentsTab } from './PaymentsTab';
 import { SessionsTab } from './SessionsTab';
 import { ReportsTab } from './ReportsTab';
@@ -15,6 +16,7 @@ import { PulseTab } from './PulseTab';
 const NAV: NavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'members', label: 'Members' },
+  { id: 'trainers', label: 'Trainers' },
   { id: 'payments', label: 'Payments' },
   { id: 'sessions', label: 'Sessions' },
   { id: 'reports', label: 'Reports' },
@@ -61,6 +63,7 @@ export function AdminDashboard() {
     <AppShell nav={NAV} active={tab} onNavigate={setTab}>
       {tab === 'overview' && <Overview go={setTab} />}
       {tab === 'members' && <MembersTab />}
+      {tab === 'trainers' && <TrainersTab />}
       {tab === 'payments' && <PaymentsTab />}
       {tab === 'sessions' && <SessionsTab />}
       {tab === 'reports' && <ReportsTab />}

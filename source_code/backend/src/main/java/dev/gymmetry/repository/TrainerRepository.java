@@ -42,6 +42,20 @@ public class TrainerRepository {
         }
     }
 
+    public void update(Trainer t) {
+        String sql = "UPDATE trainers SET name = ?, email = ? WHERE id = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, t.getName());
+            ps.setString(2, t.getEmail());
+            ps.setInt(3, t.getId());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update trainer", e);
+        }
+        replaceSpecialties(t);
+    }
+
     public List<Trainer> findAll() {
         String sql = "SELECT * FROM trainers ORDER BY id";
         List<Trainer> result = new ArrayList<>();
@@ -83,6 +97,19 @@ public class TrainerRepository {
                 ps.addBatch();
             }
             ps.executeBatch();
+        }
+    }
+
+    private void replaceSpecialties(Trainer t) {
+        try (Connection conn = Database.getConnection()) {
+            try (PreparedStatement ps = conn.prepareStatement(
+                    "DELETE FROM trainer_specialties WHERE trainer_id = ?")) {
+                ps.setInt(1, t.getId());
+                ps.executeUpdate();
+            }
+            saveSpecialties(t);
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to update trainer specialties", e);
         }
     }
 }

@@ -3,6 +3,7 @@ export type MemberStatus = 'ACTIVE' | 'EXPIRED' | 'DISABLED';
 export type SessionStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 'NOT_HELD';
 export type PayMethod = 'CASH' | 'CARD' | 'E_WALLET';
 export type PulseLevel = 'FOLLOW_UP' | 'WATCH' | 'POSITIVE';
+export type TrainerStatus = 'ACTIVE' | 'DISABLED';
 
 export const PLANS: Plan[] = ['BASIC', 'PREMIUM', 'VIP'];
 export const METHODS: PayMethod[] = ['CASH', 'CARD', 'E_WALLET'];
@@ -15,7 +16,10 @@ export interface Member {
   id: number; name: string; username: string; plan: Plan; status: MemberStatus;
   joinedAt: string; expiresAt: string; lastAttendance: string | null;
 }
-export interface Trainer { id: number; name: string; specialty: string }
+export interface Trainer {
+  id: number; name: string; email: string; username: string;
+  specialty: string; status: TrainerStatus;
+}
 export interface Session {
   id: number; memberId: number; memberName: string; trainerId: number; trainerName: string;
   date: string; time: string; status: SessionStatus; declineReason?: string;

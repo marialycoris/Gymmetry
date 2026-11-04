@@ -60,8 +60,19 @@ export const api = {
     call(() => mock.recordPayment(input), () => http<Payment>('/payments', send('POST', input))),
 
   // ---------- Trainers & sessions ----------
-  // GET /trainers
-  getTrainers: () => call(() => mock.getTrainers(), () => http<Trainer[]>('/trainers')),
+  // GET /trainers?includeDisabled=  (admin passes true to see disabled trainers)
+  getTrainers: (includeDisabled = false) =>
+    call(() => mock.getTrainers(includeDisabled),
+      () => http<Trainer[]>(`/trainers${includeDisabled ? qs({ includeDisabled: 'true' }) : ''}`)),
+  // POST /trainers  (creates the login account with a temporary password)
+  registerTrainer: (input: { name: string; email: string; specialty: string; username: string; tempPassword: string }) =>
+    call(() => mock.registerTrainer(input), () => http<Trainer>('/trainers', send('POST', input))),
+  // PUT /trainers/:id
+  updateTrainer: (id: number, input: { name: string; email: string; specialty: string }) =>
+    call(() => mock.updateTrainer(id, input), () => http<Trainer>(`/trainers/${id}`, send('PUT', input))),
+  // PUT /trainers/:id/status  { active }  (soft delete / reactivate)
+  setTrainerActive: (id: number, active: boolean) =>
+    call(() => mock.setTrainerActive(id, active), () => http<void>(`/trainers/${id}/status`, send('PUT', { active }))),
   // GET /trainers/:id/slots?date=yyyy-mm-dd  (server marks taken slots as available:false)
   getSlots: (trainerId: number, date: string) =>
     call(() => mock.getSlots(trainerId, date), () => http<Slot[]>(`/trainers/${trainerId}/slots${qs({ date })}`)),

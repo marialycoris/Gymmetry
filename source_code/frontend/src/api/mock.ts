@@ -17,9 +17,9 @@ const members: Member[] = [
   { id: 5, name: 'Liza Tan', username: 'newbie', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-60), expiresAt: iso(60), lastAttendance: iso(-2) },
 ];
 const trainers: Trainer[] = [
-  { id: 1, name: 'Coach Rico', specialty: 'Strength' },
-  { id: 2, name: 'Coach Bea', specialty: 'Cardio and HIIT' },
-  { id: 3, name: 'Coach Dan', specialty: 'Mobility' },
+  { id: 1, name: 'Coach Rico', email: 'rico@gymmetry.dev', username: 'trainer', specialty: 'Strength', status: 'ACTIVE' },
+  { id: 2, name: 'Coach Bea', email: 'bea@gymmetry.dev', username: 'bea', specialty: 'Cardio and HIIT', status: 'ACTIVE' },
+  { id: 3, name: 'Coach Dan', email: 'dan@gymmetry.dev', username: 'dan', specialty: 'Mobility', status: 'ACTIVE' },
 ];
 const nameOf = (id: number) => members.find((m) => m.id === id)!.name;
 const trainerName = (id: number) => trainers.find((t) => t.id === id)!.name;
@@ -51,6 +51,7 @@ const USERS: Record<string, User> = {
 };
 const isOpen = (s: Session) => s.status !== 'DECLINED';
 const member = (id: number) => { const m = members.find((x) => x.id === id); if (!m) throw new Error('Member not found.'); return m; };
+const trainer = (id: number) => { const t = trainers.find((x) => x.id === id); if (!t) throw new Error('Trainer not found.'); return t; };
 const session = (id: number) => { const s = sessions.find((x) => x.id === id); if (!s) throw new Error('Session not found.'); return s; };
 const slotTaken = (trainerId: number, date: string, time: string) =>
   sessions.some((s) => s.trainerId === trainerId && s.date === date && s.time === time && isOpen(s));
@@ -92,10 +93,34 @@ export const mock = {
     return p;
   },
 
-  getTrainers: () => [...trainers],
+  getTrainers: (includeDisabled = false) =>
+    trainers.filter((t) => includeDisabled || t.status === 'ACTIVE').map((t) => ({ ...t })),
+  registerTrainer(i: { name: string; email: string; specialty: string; username: string; tempPassword: string }) {
+    const taken = members.some((m) => m.username === i.username)
+      || trainers.some((t) => t.username === i.username)
+      || !!USERS[i.username.toLowerCase()];
+    if (taken) throw new Error('That username is already taken.');
+    if (i.tempPassword.length < 8) throw new Error('Temporary password must be at least 8 characters.');
+    const t: Trainer = { id: ++seq, name: i.name, email: i.email, username: i.username, specialty: i.specialty, status: 'ACTIVE' };
+    trainers.push(t);
+    USERS[i.username.toLowerCase()] = { username: i.username, role: 'TRAINER', personId: t.id, name: t.name, mustChangePassword: true };
+    return { ...t };
+  },
+  updateTrainer(id: number, i: { name: string; email: string; specialty: string }) {
+    const t = trainer(id);
+    if (trainers.some((x) => x.id !== id && x.email === i.email)) throw new Error('That email is already registered.');
+    t.name = i.name;
+    t.email = i.email;
+    t.specialty = i.specialty;
+    const user = Object.values(USERS).find((u) => u.role === 'TRAINER' && u.personId === id);
+    if (user) user.name = i.name;
+    return { ...t };
+  },
+  setTrainerActive(id: number, active: boolean): void { trainer(id).status = active ? 'ACTIVE' : 'DISABLED'; },
   getSlots: (trainerId: number, date: string) => SLOTS.map((time) => ({ time, available: !slotTaken(trainerId, date, time) })),
   bookSession(i: { memberId: number; trainerId: number; date: string; time: string }) {
     if (member(i.memberId).status !== 'ACTIVE') throw new Error('Only active members can book sessions.');
+    if (trainer(i.trainerId).status !== 'ACTIVE') throw new Error('That trainer is not available for booking.');
     if (slotTaken(i.trainerId, i.date, i.time)) throw new Error('That slot was just taken. Pick another time.');
     if (sessions.some((s) => s.memberId === i.memberId && s.date === i.date && s.time === i.time && isOpen(s)))
       throw new Error('You already have a session at this time.');

@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Button } from './Button';
-import Particles from './Particles';
 
 export interface NavItem { id: string; label: string }
 

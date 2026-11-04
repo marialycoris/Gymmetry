@@ -61,10 +61,37 @@ public class Gym {
 
     public Trainer registerTrainer(String name, String email,
                                    String username, String password) {
+        return registerTrainer(name, email, null, username, password);
+    }
+
+    public Trainer registerTrainer(String name, String email, String specialty,
+                                   String username, String password) {
         Trainer t = new Trainer(0, name, email); // temp ID
+        if (specialty != null && !specialty.isBlank()) t.addSpecialty(specialty);
         t = trainerRepo.save(t);
         authService.createUser(username, password, t, true);
         return t;
+    }
+
+    public Trainer updateTrainer(int id, String name, String email, String specialty) {
+        findTrainer(id); // ensures the trainer exists
+        Trainer updated = new Trainer(id, name, email);
+        if (specialty != null && !specialty.isBlank()) updated.addSpecialty(specialty);
+        trainerRepo.update(updated);
+        return trainerRepo.findById(id);
+    }
+
+    public void setTrainerActive(int trainerId, boolean active) {
+        Trainer t = findTrainer(trainerId);
+        User user = authService.findByPerson(t.getRole(), t.getId());
+        if (user == null) throw new IllegalStateException("No login account for trainer " + trainerId);
+        if (active) authService.enableUser(user);
+        else authService.disableUser(user);
+    }
+
+    public User findTrainerUser(int trainerId) {
+        Trainer t = findTrainer(trainerId);
+        return authService.findByPerson(t.getRole(), t.getId());
     }
 
     public Trainer findTrainer(int id) {
