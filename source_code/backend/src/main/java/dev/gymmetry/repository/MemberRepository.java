@@ -18,8 +18,10 @@ public class MemberRepository {
     public Member save(Member m) {
         String sql = """
             INSERT INTO members (name, email, plan_name, membership_status,
-                                 start_date, expiry_date)
-            VALUES (?, ?, ?, ?, ?, ?)
+                                 start_date, expiry_date, first_name, last_name,
+                                 date_of_birth, gender, address, contact_number,
+                                 emergency_contact_number, medical_condition)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             RETURNING id
             """;
         try (Connection conn = Database.getConnection();
@@ -30,6 +32,14 @@ public class MemberRepository {
             ps.setString(4, m.getMembershipStatus().name());
             ps.setObject(5, m.getStartDate());
             ps.setObject(6, m.getExpiryDate());
+            ps.setString(7, m.getFirstName());
+            ps.setString(8, m.getLastName());
+            ps.setObject(9, m.getDateOfBirth());
+            ps.setString(10, m.getGender());
+            ps.setString(11, m.getAddress());
+            ps.setString(12, m.getContactNumber());
+            ps.setString(13, m.getEmergencyContactNumber());
+            ps.setString(14, m.getMedicalCondition());
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 return copyWithId(m, rs.getInt("id"));
@@ -69,7 +79,9 @@ public class MemberRepository {
     public void update(Member m) {
         String sql = """
             UPDATE members SET name=?, email=?, plan_name=?,
-                membership_status=?, start_date=?, expiry_date=?
+                membership_status=?, start_date=?, expiry_date=?,
+                first_name=?, last_name=?, date_of_birth=?, gender=?, address=?,
+                contact_number=?, emergency_contact_number=?, medical_condition=?
             WHERE id=?
             """;
         try (Connection conn = Database.getConnection();
@@ -80,7 +92,15 @@ public class MemberRepository {
             ps.setString(4, m.getMembershipStatus().name());
             ps.setObject(5, m.getStartDate());
             ps.setObject(6, m.getExpiryDate());
-            ps.setInt(7, m.getId());
+            ps.setString(7, m.getFirstName());
+            ps.setString(8, m.getLastName());
+            ps.setObject(9, m.getDateOfBirth());
+            ps.setString(10, m.getGender());
+            ps.setString(11, m.getAddress());
+            ps.setString(12, m.getContactNumber());
+            ps.setString(13, m.getEmergencyContactNumber());
+            ps.setString(14, m.getMedicalCondition());
+            ps.setInt(15, m.getId());
             ps.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Failed to update member", e);
@@ -99,11 +119,22 @@ public class MemberRepository {
         m.setMembershipStatus(MembershipStatus.valueOf(rs.getString("membership_status")));
         m.setStartDate(rs.getObject("start_date", LocalDate.class));
         m.setExpiryDate(rs.getObject("expiry_date", LocalDate.class));
+        m.setFirstName(rs.getString("first_name"));
+        m.setLastName(rs.getString("last_name"));
+        m.setDateOfBirth(rs.getObject("date_of_birth", LocalDate.class));
+        m.setGender(rs.getString("gender"));
+        m.setAddress(rs.getString("address"));
+        m.setContactNumber(rs.getString("contact_number"));
+        m.setEmergencyContactNumber(rs.getString("emergency_contact_number"));
+        m.setMedicalCondition(rs.getString("medical_condition"));
         return m;
     }
 
     private Member copyWithId(Member src, int id) {
-        Member m = new Member(id, src.getName(), src.getEmail(), src.getPlan());
+        Member m = new Member(id, src.getName(), src.getEmail(), src.getPlan(),
+                src.getFirstName(), src.getLastName(), src.getDateOfBirth(), src.getGender(),
+                src.getAddress(), src.getContactNumber(), src.getEmergencyContactNumber(),
+                src.getMedicalCondition());
         m.setMembershipStatus(src.getMembershipStatus());
         m.setStartDate(src.getStartDate());
         m.setExpiryDate(src.getExpiryDate());

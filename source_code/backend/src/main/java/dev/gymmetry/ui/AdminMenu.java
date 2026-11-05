@@ -4,6 +4,7 @@ import dev.gymmetry.domain.*;
 import dev.gymmetry.enums.*;
 import dev.gymmetry.service.Gym;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -64,22 +65,46 @@ public class AdminMenu {
 
     private void registerMember() {
         System.out.println("\n--- REGISTER MEMBER ---");
-        String name = in.readLine("Name:  ");
+        String firstName = in.readLine("First name: ");
+        String lastName = in.readLine("Last name: ");
+        String name = (firstName + " " + lastName).trim();
         String email = in.readLine("Email: ");
+        String dob = in.readLine("Date of birth (YYYY-MM-DD): ");
+        String gender = in.readLine("Sex at birth: ");
+        String address = in.readLine("Address (optional): ");
+        String contact = in.readLine("Contact number: ");
+        String emergency = in.readLine("Emergency contact number: ");
+        String medical = in.readLine("Medical condition (leave blank if none): ");
         String username = in.readLine("Username: ");
         String password = in.readLine("Password: ");
         MembershipPlan plan = pickPlan();
-        Member m = gym.registerMember(name, email, plan, username, password);
+        Member m = new Member(0, name, email, plan, firstName, lastName, LocalDate.parse(dob),
+                gender, blankToNull(address), contact, emergency, blankToNull(medical));
+        gym.registerMember(m, username, password);
         System.out.println("  ✓ Member registered: " + m);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     private void registerTrainer() {
         System.out.println("\n--- REGISTER TRAINER ---");
-        String name = in.readLine("Name:  ");
+        String firstName = in.readLine("First name: ");
+        String lastName = in.readLine("Last name: ");
+        String name = (firstName + " " + lastName).trim();
         String email = in.readLine("Email: ");
+        String gender = in.readLine("Sex at birth: ");
+        String contact = in.readLine("Contact number: ");
+        String address = in.readLine("Address: ");
+        String license = in.readLine("License (optional): ");
+        String specialty = in.readLine("Specialization: ");
         String username = in.readLine("Username: ");
         String password = in.readLine("Password: ");
-        Trainer t = gym.registerTrainer(name, email, username, password);
+        Trainer trainer = new Trainer(0, name, email, firstName, lastName, gender, contact,
+                address, blankToNull(license));
+        if (specialty != null && !specialty.isBlank()) trainer.addSpecialty(specialty);
+        Trainer t = gym.registerTrainer(trainer, username, password);
         System.out.println("  ✓ Trainer registered: " + t);
     }
 

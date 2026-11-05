@@ -13,13 +13,37 @@ public class Member extends Person {
     private LocalDate startDate;
     private LocalDate expiryDate;
 
+    private String firstName;
+    private String lastName;
+    private LocalDate dateOfBirth;
+    private String gender;
+    private String address;
+    private String contactNumber;
+    private String emergencyContactNumber;
+    private String medicalCondition;
+
     public Member(int id, String name, String email, MembershipPlan plan) {
+        this(id, name, email, plan, null, null, null, null, null, null, null, null);
+    }
+
+    public Member(int id, String name, String email, MembershipPlan plan,
+                  String firstName, String lastName, LocalDate dateOfBirth, String gender,
+                  String address, String contactNumber, String emergencyContactNumber,
+                  String medicalCondition) {
         super(id, name, email);
         if (plan == null) throw new IllegalArgumentException("Plan cannot be null");
         this.plan = plan;
         this.membershipStatus = MembershipStatus.PENDING_PAYMENT;
         this.startDate = null;
         this.expiryDate = null;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.dateOfBirth = dateOfBirth;
+        this.gender = gender;
+        this.address = address;
+        this.contactNumber = contactNumber;
+        this.emergencyContactNumber = emergencyContactNumber;
+        this.medicalCondition = medicalCondition;
     }
 
     // --- Getters ---
@@ -27,6 +51,24 @@ public class Member extends Person {
     public MembershipStatus getMembershipStatus() { return membershipStatus; }
     public LocalDate getStartDate() { return startDate; }
     public LocalDate getExpiryDate() { return expiryDate; }
+    public String getFirstName() { return firstName; }
+    public String getLastName() { return lastName; }
+    public LocalDate getDateOfBirth() { return dateOfBirth; }
+    public String getGender() { return gender; }
+    public String getAddress() { return address; }
+    public String getContactNumber() { return contactNumber; }
+    public String getEmergencyContactNumber() { return emergencyContactNumber; }
+    public String getMedicalCondition() { return medicalCondition; }
+
+    // --- Member details ---
+    public void setFirstName(String firstName) { this.firstName = firstName; }
+    public void setLastName(String lastName) { this.lastName = lastName; }
+    public void setDateOfBirth(LocalDate dateOfBirth) { this.dateOfBirth = dateOfBirth; }
+    public void setGender(String gender) { this.gender = gender; }
+    public void setAddress(String address) { this.address = address; }
+    public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+    public void setEmergencyContactNumber(String emergencyContactNumber) { this.emergencyContactNumber = emergencyContactNumber; }
+    public void setMedicalCondition(String medicalCondition) { this.medicalCondition = medicalCondition; }
 
     // --- Plan management ---
     public void setPlan(MembershipPlan plan) {

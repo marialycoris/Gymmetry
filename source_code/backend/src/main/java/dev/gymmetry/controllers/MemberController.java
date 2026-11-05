@@ -6,6 +6,7 @@ import dev.gymmetry.service.Gym;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -36,21 +37,44 @@ public class MemberController {
     }
 
     // Register a new member
-    public record RegisterMemberRequest(String name, String email, String plan, String username, String password) {}
-    
+    public record RegisterMemberRequest(
+            String firstName, String lastName, String dateOfBirth, String gender,
+            String address, String contactNumber, String emergencyContactNumber, String medicalCondition,
+            String name, String email, String plan, String username, String password, String tempPassword) {}
+
     @PostMapping
     public ResponseEntity<?> registerMember(@RequestBody RegisterMemberRequest req) {
         try {
-            MembershipPlan plan = switch (req.plan().toLowerCase()) {
+            MembershipPlan plan = switch (req.plan() == null ? "basic" : req.plan().toLowerCase()) {
                 case "premium" -> new PremiumPlan();
                 case "vip" -> new VipPlan();
                 default -> new BasicPlan();
             };
-            Member m = gym.registerMember(req.name(), req.email(), plan, req.username(), req.password());
-            return ResponseEntity.ok(m);
+            String name = req.name();
+            if (name == null || name.isBlank()) {
+                name = ((req.firstName() == null ? "" : req.firstName()) + " "
+                        + (req.lastName() == null ? "" : req.lastName())).trim();
+            }
+            String email = req.email();
+            if (email == null || email.isBlank()) {
+                email = req.username() + "@gymmetry.local";
+            }
+            LocalDate dob = req.dateOfBirth() == null || req.dateOfBirth().isBlank()
+                    ? null : LocalDate.parse(req.dateOfBirth());
+            String password = req.tempPassword() != null ? req.tempPassword() : req.password();
+
+            Member m = new Member(0, name, email, plan,
+                    req.firstName(), req.lastName(), dob, req.gender(),
+                    blankToNull(req.address()), req.contactNumber(),
+                    req.emergencyContactNumber(), blankToNull(req.medicalCondition()));
+            return ResponseEntity.ok(gym.registerMember(m, req.username(), password));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     // Record Payment for a member (Admin)

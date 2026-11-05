@@ -1,6 +1,6 @@
 // In-memory demo data so the UI works before the backend is connected.
-// Delete this file (and set USE_MOCK = false in client.ts) once your API is live.
-import type { Member, Trainer, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
+// Delete this file (and set USE_MOCK = false in client.ts) once API is live.
+import type { Member, MemberRegistrationInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
 import { METHODS, PLANS, STATUSES } from '../lib/types';
 import type { User } from '../context/AuthContext';
 
@@ -10,16 +10,16 @@ const SLOTS = ['06:00', '08:00', '10:00', '16:00', '18:00', '20:00'];
 let seq = 100;
 
 const members: Member[] = [
-  { id: 1, name: 'Maria Santos', username: 'member', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-200), expiresAt: iso(24), lastAttendance: iso(-4) },
-  { id: 2, name: 'Jon Reyes', username: 'jon', plan: 'BASIC', status: 'ACTIVE', joinedAt: iso(-120), expiresAt: iso(5), lastAttendance: iso(-19) },
-  { id: 3, name: 'Ana Cruz', username: 'ana', plan: 'VIP', status: 'EXPIRED', joinedAt: iso(-300), expiresAt: iso(-12), lastAttendance: iso(-40) },
-  { id: 4, name: 'Paolo Lim', username: 'paolo', plan: 'BASIC', status: 'DISABLED', joinedAt: iso(-400), expiresAt: iso(-210), lastAttendance: iso(-200) },
-  { id: 5, name: 'Liza Tan', username: 'newbie', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-60), expiresAt: iso(60), lastAttendance: iso(-2) },
+  { id: 1, name: 'Maria Santos', firstName: 'Maria', lastName: 'Santos', username: 'member', dateOfBirth: '1996-04-12', gender: 'FEMALE', address: '12 Mabini St., Makati', contactNumber: '09171234567', emergencyContactNumber: '09181234567', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-200), expiresAt: iso(24), lastAttendance: iso(-4) },
+  { id: 2, name: 'Jon Reyes', firstName: 'Jon', lastName: 'Reyes', username: 'jon', dateOfBirth: '1993-11-02', gender: 'MALE', contactNumber: '09172345678', emergencyContactNumber: '09182345678', plan: 'BASIC', status: 'ACTIVE', joinedAt: iso(-120), expiresAt: iso(5), lastAttendance: iso(-19) },
+  { id: 3, name: 'Ana Cruz', firstName: 'Ana', lastName: 'Cruz', username: 'ana', dateOfBirth: '1990-06-25', gender: 'FEMALE', address: '8 Rizal Ave., Pasig', contactNumber: '09173456789', emergencyContactNumber: '09183456789', medicalCondition: 'Asthma', plan: 'VIP', status: 'EXPIRED', joinedAt: iso(-300), expiresAt: iso(-12), lastAttendance: iso(-40) },
+  { id: 4, name: 'Paolo Lim', firstName: 'Paolo', lastName: 'Lim', username: 'paolo', dateOfBirth: '1988-01-18', gender: 'MALE', contactNumber: '09174567890', emergencyContactNumber: '09184567890', plan: 'BASIC', status: 'DISABLED', joinedAt: iso(-400), expiresAt: iso(-210), lastAttendance: iso(-200) },
+  { id: 5, name: 'Liza Tan', firstName: 'Liza', lastName: 'Tan', username: 'newbie', dateOfBirth: '1999-09-30', gender: 'FEMALE', address: '21 Bonifacio St., Taguig', contactNumber: '09175678901', emergencyContactNumber: '09185678901', medicalCondition: 'Mild scoliosis', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-60), expiresAt: iso(60), lastAttendance: iso(-2) },
 ];
 const trainers: Trainer[] = [
-  { id: 1, name: 'Coach Rico', email: 'rico@gymmetry.dev', username: 'trainer', specialty: 'Strength', status: 'ACTIVE' },
-  { id: 2, name: 'Coach Bea', email: 'bea@gymmetry.dev', username: 'bea', specialty: 'Cardio and HIIT', status: 'ACTIVE' },
-  { id: 3, name: 'Coach Dan', email: 'dan@gymmetry.dev', username: 'dan', specialty: 'Mobility', status: 'ACTIVE' },
+  { id: 1, name: 'Rico Dela Cruz', firstName: 'Rico', lastName: 'Dela Cruz', email: 'rico@gymmetry.dev', username: 'trainer', gender: 'MALE', contactNumber: '09171112222', address: '14 Katipunan Ave., Quezon City', license: 'PT-0012345', specialty: 'Strength and Conditioning', status: 'ACTIVE' },
+  { id: 2, name: 'Bea Mendoza', firstName: 'Bea', lastName: 'Mendoza', email: 'bea@gymmetry.dev', username: 'bea', gender: 'FEMALE', contactNumber: '09172223333', address: '5 Ortigas Ave., Pasig', specialty: 'Group Exercise & Boot Camp', status: 'ACTIVE' },
+  { id: 3, name: 'Dan Villanueva', firstName: 'Dan', lastName: 'Villanueva', email: 'dan@gymmetry.dev', username: 'dan', gender: 'MALE', contactNumber: '09173334444', address: '22 España Blvd., Manila', license: 'PT-0067890', specialty: 'Corrective Exercise Specialist (CES)', status: 'ACTIVE' },
 ];
 const nameOf = (id: number) => members.find((m) => m.id === id)!.name;
 const trainerName = (id: number) => trainers.find((t) => t.id === id)!.name;
@@ -66,10 +66,27 @@ export const mock = {
 
   getMembers: () => members.map((m) => ({ ...m })),
   getMember: (id: number) => ({ ...member(id) }),
-  registerMember(i: { name: string; username: string; tempPassword: string; plan: Plan }) {
+  registerMember(i: MemberRegistrationInput) {
     if (members.some((m) => m.username === i.username)) throw new Error('That username is already taken.');
     if (i.tempPassword.length < 8) throw new Error('Temporary password must be at least 8 characters.');
-    const m: Member = { id: ++seq, name: i.name, username: i.username, plan: i.plan, status: 'ACTIVE', joinedAt: iso(), expiresAt: iso(30), lastAttendance: null };
+    const m: Member = {
+      id: ++seq,
+      name: `${i.firstName} ${i.lastName}`.trim(),
+      firstName: i.firstName,
+      lastName: i.lastName,
+      username: i.username,
+      dateOfBirth: i.dateOfBirth,
+      gender: i.gender,
+      address: i.address?.trim() || undefined,
+      contactNumber: i.contactNumber,
+      emergencyContactNumber: i.emergencyContactNumber,
+      medicalCondition: i.medicalCondition?.trim() || undefined,
+      plan: i.plan,
+      status: 'ACTIVE',
+      joinedAt: iso(),
+      expiresAt: iso(30),
+      lastAttendance: null,
+    };
     members.push(m);
     return { ...m };
   },
@@ -95,13 +112,26 @@ export const mock = {
 
   getTrainers: (includeDisabled = false) =>
     trainers.filter((t) => includeDisabled || t.status === 'ACTIVE').map((t) => ({ ...t })),
-  registerTrainer(i: { name: string; email: string; specialty: string; username: string; tempPassword: string }) {
+  registerTrainer(i: TrainerRegistrationInput) {
     const taken = members.some((m) => m.username === i.username)
       || trainers.some((t) => t.username === i.username)
       || !!USERS[i.username.toLowerCase()];
     if (taken) throw new Error('That username is already taken.');
     if (i.tempPassword.length < 8) throw new Error('Temporary password must be at least 8 characters.');
-    const t: Trainer = { id: ++seq, name: i.name, email: i.email, username: i.username, specialty: i.specialty, status: 'ACTIVE' };
+    const t: Trainer = {
+      id: ++seq,
+      name: `${i.firstName} ${i.lastName}`.trim(),
+      firstName: i.firstName,
+      lastName: i.lastName,
+      email: i.email,
+      username: i.username,
+      gender: i.gender,
+      contactNumber: i.contactNumber,
+      address: i.address,
+      license: i.license?.trim() || undefined,
+      specialty: i.specialty,
+      status: 'ACTIVE',
+    };
     trainers.push(t);
     USERS[i.username.toLowerCase()] = { username: i.username, role: 'TRAINER', personId: t.id, name: t.name, mustChangePassword: true };
     return { ...t };

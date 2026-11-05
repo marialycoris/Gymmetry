@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { useAsync } from '../../hooks/useAsync';
-import { PLANS, type Member, type Plan } from '../../lib/types';
+import { GENDERS, PLANS, type Gender, type Member, type MemberRegistrationInput, type Plan } from '../../lib/types';
 import { daysUntil, fmtDate } from '../../lib/format';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -13,9 +13,14 @@ import { Table, td } from '../../components/Table';
 import { Loading, Notice } from '../../components/Widgets';
 
 const planOptions = PLANS.map((p) => ({ value: p, label: p[0] + p.slice(1).toLowerCase() }));
+const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).toLowerCase() }));
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
-  const [f, setF] = useState({ name: '', username: '', tempPassword: '', plan: 'BASIC' as Plan });
+  const [f, setF] = useState<MemberRegistrationInput>({
+    firstName: '', lastName: '', dateOfBirth: '', gender: 'MALE' as Gender,
+    address: '', contactNumber: '', emergencyContactNumber: '', medicalCondition: '',
+    username: '', tempPassword: '', plan: 'BASIC' as Plan,
+  });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
@@ -28,7 +33,16 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
   return (
     <form onSubmit={submit}>
       {err && <Notice tone="error">{err}</Notice>}
-      <Input label="Full name" value={f.name} onChange={set('name')} required />
+      <div className="grid grid-cols-2 gap-x-4">
+        <Input label="First name" value={f.firstName} onChange={set('firstName')} required />
+        <Input label="Last name" value={f.lastName} onChange={set('lastName')} required />
+        <Input label="Date of birth" type="date" value={f.dateOfBirth} onChange={set('dateOfBirth')} required />
+        <Select label="Sex at birth" value={f.gender} onChange={set('gender')} options={genderOptions} />
+        <Input label="Contact number" type="tel" value={f.contactNumber} onChange={set('contactNumber')} required />
+        <Input label="Emergency contact number" type="tel" value={f.emergencyContactNumber} onChange={set('emergencyContactNumber')} required />
+      </div>
+      <Input label="Address" value={f.address} onChange={set('address')} placeholder="Optional" />
+      <Input label="Medical condition" value={f.medicalCondition} onChange={set('medicalCondition')} placeholder="Diabetes, Hypertension, etc. (leave blank if none)" />
       <Input label="Username" value={f.username} onChange={set('username')} required />
       <Input label="Temporary password" type="text" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
       <p className="text-xs text-gray-500 -mt-2 mb-4">The member must change this the first time they log in.</p>

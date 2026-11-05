@@ -39,8 +39,11 @@ public class Gym {
     public Member registerMember(String name, String email,
                                  MembershipPlan plan,
                                  String username, String password) {
-        Member m = new Member(0, name, email, plan); // temp ID
-        m = memberRepo.save(m);                      // returns with real ID
+        return registerMember(new Member(0, name, email, plan), username, password);
+    }
+
+    public Member registerMember(Member member, String username, String password) {
+        Member m = memberRepo.save(member); // returns with real ID
         authService.createUser(username, password, m, true);
         return m;
     }
@@ -68,7 +71,11 @@ public class Gym {
                                    String username, String password) {
         Trainer t = new Trainer(0, name, email); // temp ID
         if (specialty != null && !specialty.isBlank()) t.addSpecialty(specialty);
-        t = trainerRepo.save(t);
+        return registerTrainer(t, username, password);
+    }
+
+    public Trainer registerTrainer(Trainer trainer, String username, String password) {
+        Trainer t = trainerRepo.save(trainer);
         authService.createUser(username, password, t, true);
         return t;
     }

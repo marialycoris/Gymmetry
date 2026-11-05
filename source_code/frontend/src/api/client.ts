@@ -1,5 +1,5 @@
 import type { User } from '../context/AuthContext';
-import type { Member, Trainer, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
+import type { Member, MemberRegistrationInput, Trainer, TrainerRegistrationInput, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
 import { mock } from './mock';
 
 const API_URL = 'http://localhost:8080/api';
@@ -39,7 +39,7 @@ export const api = {
   // GET /members/:id
   getMember: (id: number) => call(() => mock.getMember(id), () => http<Member>(`/members/${id}`)),
   // POST /members  (creates the account with a temporary password; first login forces a change)
-  registerMember: (input: { name: string; username: string; tempPassword: string; plan: Plan }) =>
+  registerMember: (input: MemberRegistrationInput) =>
     call(() => mock.registerMember(input), () => http<Member>('/members', send('POST', input))),
   // PUT /members/:id/plan
   updateMemberPlan: (id: number, plan: Plan) =>
@@ -65,7 +65,7 @@ export const api = {
     call(() => mock.getTrainers(includeDisabled),
       () => http<Trainer[]>(`/trainers${includeDisabled ? qs({ includeDisabled: 'true' }) : ''}`)),
   // POST /trainers  (creates the login account with a temporary password)
-  registerTrainer: (input: { name: string; email: string; specialty: string; username: string; tempPassword: string }) =>
+  registerTrainer: (input: TrainerRegistrationInput) =>
     call(() => mock.registerTrainer(input), () => http<Trainer>('/trainers', send('POST', input))),
   // PUT /trainers/:id
   updateTrainer: (id: number, input: { name: string; email: string; specialty: string }) =>

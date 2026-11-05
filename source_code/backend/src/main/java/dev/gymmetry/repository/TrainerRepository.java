@@ -10,15 +10,27 @@ import java.util.List;
 public class TrainerRepository {
 
     public Trainer save(Trainer t) {
-        String sql = "INSERT INTO trainers (name, email) VALUES (?, ?) RETURNING id";
+        String sql = """
+            INSERT INTO trainers (name, email, first_name, last_name, gender,
+                                  contact_number, address, license)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+            """;
         try (Connection conn = Database.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, t.getName());
             ps.setString(2, t.getEmail());
+            ps.setString(3, t.getFirstName());
+            ps.setString(4, t.getLastName());
+            ps.setString(5, t.getGender());
+            ps.setString(6, t.getContactNumber());
+            ps.setString(7, t.getAddress());
+            ps.setString(8, t.getLicense());
             try (ResultSet rs = ps.executeQuery()) {
                 rs.next();
                 int id = rs.getInt("id");
-                Trainer copy = new Trainer(id, t.getName(), t.getEmail());
+                Trainer copy = new Trainer(id, t.getName(), t.getEmail(), t.getFirstName(),
+                        t.getLastName(), t.getGender(), t.getContactNumber(), t.getAddress(), t.getLicense());
                 for (String s : t.getSpecialties()) copy.addSpecialty(s);
                 saveSpecialties(copy);
                 return copy;
@@ -72,7 +84,9 @@ public class TrainerRepository {
     // ---- helpers ----
 
     private Trainer mapRow(ResultSet rs) throws SQLException {
-        return new Trainer(rs.getInt("id"), rs.getString("name"), rs.getString("email"));
+        return new Trainer(rs.getInt("id"), rs.getString("name"), rs.getString("email"),
+                rs.getString("first_name"), rs.getString("last_name"), rs.getString("gender"),
+                rs.getString("contact_number"), rs.getString("address"), rs.getString("license"));
     }
 
     private Trainer loadSpecialties(Trainer t) throws SQLException {

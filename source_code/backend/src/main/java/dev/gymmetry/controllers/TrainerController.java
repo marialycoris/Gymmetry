@@ -20,8 +20,9 @@ public class TrainerController {
         this.gym = gym;
     }
 
-    public record TrainerDto(int id, String name, String email, String username,
-                             String specialty, String status) {}
+    public record TrainerDto(int id, String name, String firstName, String lastName, String email,
+                             String username, String gender, String contactNumber, String address,
+                             String license, String specialty, String status) {}
 
     @GetMapping
     public List<TrainerDto> getAllTrainers(@RequestParam(defaultValue = "false") boolean includeDisabled) {
@@ -40,18 +41,29 @@ public class TrainerController {
         }
     }
 
-    public record RegisterTrainerRequest(String name, String email, String specialty,
-                                         String username, String tempPassword) {}
+    public record RegisterTrainerRequest(String firstName, String lastName, String name, String email,
+                                         String gender, String contactNumber, String address, String license,
+                                         String specialty, String username, String tempPassword) {}
 
     @PostMapping
     public ResponseEntity<?> registerTrainer(@RequestBody RegisterTrainerRequest req) {
         try {
-            Trainer t = gym.registerTrainer(req.name(), req.email(), req.specialty(),
-                    req.username(), req.tempPassword());
-            return ResponseEntity.ok(toDto(t));
+            String name = req.name();
+            if (name == null || name.isBlank()) {
+                name = ((req.firstName() == null ? "" : req.firstName()) + " "
+                        + (req.lastName() == null ? "" : req.lastName())).trim();
+            }
+            Trainer t = new Trainer(0, name, req.email(), req.firstName(), req.lastName(),
+                    req.gender(), req.contactNumber(), req.address(), blankToNull(req.license()));
+            if (req.specialty() != null && !req.specialty().isBlank()) t.addSpecialty(req.specialty());
+            return ResponseEntity.ok(toDto(gym.registerTrainer(t, req.username(), req.tempPassword())));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value;
     }
 
     public record UpdateTrainerRequest(String name, String email, String specialty) {}
@@ -81,7 +93,8 @@ public class TrainerController {
         User user = gym.findTrainerUser(t.getId());
         String specialty = t.getSpecialties().isEmpty() ? "" : t.getSpecialties().get(0);
         String status = user != null && user.getAccountStatus() == AccountStatus.ENABLED ? "ACTIVE" : "DISABLED";
-        return new TrainerDto(t.getId(), t.getName(), t.getEmail(),
-                user != null ? user.getUsername() : "", specialty, status);
+        return new TrainerDto(t.getId(), t.getName(), t.getFirstName(), t.getLastName(), t.getEmail(),
+                user != null ? user.getUsername() : "", t.getGender(), t.getContactNumber(),
+                t.getAddress(), t.getLicense(), specialty, status);
     }
 }

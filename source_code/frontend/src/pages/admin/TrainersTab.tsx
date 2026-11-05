@@ -1,34 +1,48 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { useAsync } from '../../hooks/useAsync';
-import { type Trainer } from '../../lib/types';
+import { GENDERS, type Gender, type Trainer, type TrainerRegistrationInput } from '../../lib/types';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
+import { Select } from '../../components/Select';
+import { SpecializationSelect } from '../../components/SpecializationSelect';
 import { Modal } from '../../components/Modal';
 import { Badge } from '../../components/Badge';
 import { Table, td } from '../../components/Table';
 import { Loading, Notice } from '../../components/Widgets';
 
 const errorText = (x: unknown) => (x instanceof Error ? x.message : String(x));
+const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).toLowerCase() }));
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
-  const [f, setF] = useState({ name: '', email: '', specialty: '', username: '', tempPassword: '' });
+  const [f, setF] = useState<TrainerRegistrationInput>({
+    firstName: '', lastName: '', email: '', gender: 'MALE' as Gender,
+    contactNumber: '', address: '', license: '', specialty: '', username: '', tempPassword: '',
+  });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!f.specialty.trim()) { setErr('Please choose a specialization.'); return; }
     setBusy(true); setErr('');
     try { await api.registerTrainer(f); onDone(); } catch (x) { setErr(errorText(x)); } finally { setBusy(false); }
   };
   return (
     <form onSubmit={submit}>
       {err && <Notice tone="error">{err}</Notice>}
-      <Input label="Full name" value={f.name} onChange={set('name')} required />
-      <Input label="Email" type="email" value={f.email} onChange={set('email')} required />
-      <Input label="Specialty" value={f.specialty} onChange={set('specialty')} required />
+      <div className="grid grid-cols-2 gap-x-4">
+        <Input label="First name" value={f.firstName} onChange={set('firstName')} required />
+        <Input label="Last name" value={f.lastName} onChange={set('lastName')} required />
+        <Input label="Email" type="email" value={f.email} onChange={set('email')} required />
+        <Select label="Sex at birth" value={f.gender} onChange={set('gender')} options={genderOptions} />
+        <Input label="Contact number" type="tel" value={f.contactNumber} onChange={set('contactNumber')} required />
+        <Input label="Address" value={f.address} onChange={set('address')} required />
+      </div>
+      <Input label="License" value={f.license} onChange={set('license')} placeholder="Optional — enter license number if available" />
+      <SpecializationSelect label="Specialization" value={f.specialty} onChange={(specialty) => setF({ ...f, specialty })} />
       <Input label="Username" value={f.username} onChange={set('username')} required />
       <Input label="Temporary password" type="text" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
       <p className="text-xs text-gray-500 -mt-2 mb-4">The trainer must change this the first time they log in.</p>

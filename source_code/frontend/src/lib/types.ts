@@ -1,4 +1,5 @@
 export type Plan = 'BASIC' | 'PREMIUM' | 'VIP';
+export type Gender = 'MALE' | 'FEMALE';
 export type MemberStatus = 'ACTIVE' | 'EXPIRED' | 'DISABLED';
 export type SessionStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 'NOT_HELD';
 export type PayMethod = 'CASH' | 'CARD' | 'E_WALLET';
@@ -6,6 +7,7 @@ export type PulseLevel = 'FOLLOW_UP' | 'WATCH' | 'POSITIVE';
 export type TrainerStatus = 'ACTIVE' | 'DISABLED';
 
 export const PLANS: Plan[] = ['BASIC', 'PREMIUM', 'VIP'];
+export const GENDERS: Gender[] = ['MALE', 'FEMALE'];
 export const METHODS: PayMethod[] = ['CASH', 'CARD', 'E_WALLET'];
 export const STATUSES: SessionStatus[] = ['PENDING', 'ACCEPTED', 'DECLINED', 'COMPLETED', 'NOT_HELD'];
 
@@ -13,12 +15,25 @@ export const STATUSES: SessionStatus[] = ['PENDING', 'ACCEPTED', 'DECLINED', 'CO
 export const PLAN_PRICE: Record<Plan, number> = { BASIC: 800, PREMIUM: 1500, VIP: 2500 };
 
 export interface Member {
-  id: number; name: string; username: string; plan: Plan; status: MemberStatus;
-  joinedAt: string; expiresAt: string; lastAttendance: string | null;
+  id: number; name: string; firstName: string; lastName: string; username: string;
+  dateOfBirth: string; gender: Gender; address?: string;
+  contactNumber: string; emergencyContactNumber: string; medicalCondition?: string;
+  plan: Plan; status: MemberStatus; joinedAt: string; expiresAt: string; lastAttendance: string | null;
+}
+export interface MemberRegistrationInput {
+  firstName: string; lastName: string; dateOfBirth: string; gender: Gender;
+  address?: string; contactNumber: string; emergencyContactNumber: string; medicalCondition?: string;
+  username: string; tempPassword: string; plan: Plan;
 }
 export interface Trainer {
-  id: number; name: string; email: string; username: string;
+  id: number; name: string; firstName: string; lastName: string; email: string; username: string;
+  gender: Gender; contactNumber: string; address: string; license?: string;
   specialty: string; status: TrainerStatus;
+}
+export interface TrainerRegistrationInput {
+  firstName: string; lastName: string; email: string; gender: Gender;
+  contactNumber: string; address: string; license?: string;
+  specialty: string; username: string; tempPassword: string;
 }
 export interface Session {
   id: number; memberId: number; memberName: string; trainerId: number; trainerName: string;
