@@ -66,7 +66,6 @@ function ManageTrainer({ t, onDone }: { t: Trainer; onDone: () => void }) {
 
   return (
     <div>
-      <p className="text-sm text-gray-600 mb-4">@{t.username}</p>
       {err && <Notice tone="error">{err}</Notice>}
       <Input label="Full name" value={f.name} onChange={set('name')} required />
       <Input label="Email" type="email" value={f.email} onChange={set('email')} required />

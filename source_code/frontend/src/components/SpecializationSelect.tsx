@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { OTHER_SPECIALIZATION, SPECIALIZATIONS } from '../lib/specializations';
 
 interface SpecializationSelectProps {
@@ -68,7 +69,7 @@ export function SpecializationSelect({ label, value, onChange }: SpecializationS
             ) : (
               <span className="text-gray-500">Select specialization</span>
             )}
-            <span className="text-gray-400">▾</span>
+            <ChevronDown className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
           </button>
           {open && (
             <div role="listbox" className="absolute z-20 mt-1 w-full max-h-64 overflow-y-auto custom-scrollbar rounded-lg border border-gray-200 bg-white shadow-xl">
