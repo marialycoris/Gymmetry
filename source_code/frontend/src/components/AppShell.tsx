@@ -94,13 +94,20 @@ function Sidebar({ nav, active, collapsed, mobile, userName, userRole, onNavigat
         })}
       </nav>
 
-      <div className="px-3 pb-3 mt-auto md:px-5 md:pb-6">
+      <div className={`px-3 pb-3 mt-auto md:pb-6 ${rail ? 'md:px-3' : 'md:px-5'}`}>
         <div className={`mb-3 text-sm leading-tight ${rail ? 'md:hidden' : ''}`}>
           <span className="block font-bold">{userName}</span>
           <span className="block text-white/75 capitalize">{userRole?.toLowerCase()}</span>
         </div>
-        <Button variant="danger" size="sm" onClick={onLogout} className="w-full inline-flex items-center justify-center gap-2">
-          <LogOut className="h-4 w-4" aria-hidden="true" />
+        <Button
+          variant="danger"
+          size="sm"
+          onClick={onLogout}
+          title="Log out"
+          aria-label="Log out"
+          className={`w-full inline-flex items-center justify-center gap-2 ${rail ? 'md:px-0' : ''}`}
+        >
+          <LogOut className="h-4 w-4 shrink-0" aria-hidden="true" />
           <span className={rail ? 'md:sr-only' : ''}>Log out</span>
         </Button>
       </div>

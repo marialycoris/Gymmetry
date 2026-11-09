@@ -7,6 +7,8 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Select } from '../../components/Select';
+import { Filter } from '../../components/Filter';
+import { SearchBar } from '../../components/SearchBar';
 import { Table, td } from '../../components/Table';
 import { Loading, Notice, Stat } from '../../components/Widgets';
 import { pretty } from '../../components/Badge';
@@ -14,6 +16,7 @@ import { pretty } from '../../components/Badge';
 export function PaymentsTab() {
   const members = useAsync(() => api.getMembers());
   const [filter, setFilter] = useState('');
+  const [q, setQ] = useState('');
   const payments = useAsync(() => api.getPayments(filter ? Number(filter) : undefined), [filter]);
 
   const [memberId, setMemberId] = useState('');
@@ -24,6 +27,7 @@ export function PaymentsTab() {
 
   if (members.loading || payments.loading) return <Loading />;
   const list = payments.data ?? [];
+  const rows = list.filter((p) => p.memberName.toLowerCase().includes(q.toLowerCase()));
   const memberOptions = [{ value: '', label: 'Select a member' }, ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name }))];
 
   const pickMember = (id: string) => {
@@ -59,11 +63,19 @@ export function PaymentsTab() {
 
       <div className="space-y-6">
         <Stat label={filter ? 'Total paid by this member' : 'Total revenue'} value={money(list.reduce((s, p) => s + p.amount, 0))} />
-        <Card title="Payment history">
-          <Select label="Show payments for" value={filter} onChange={(e) => setFilter(e.target.value)}
-            options={[{ value: '', label: 'All members' }, ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name }))]} />
-          <Table headers={['Date', 'Member', 'Method', 'Amount']} isEmpty={list.length === 0} emptyText="No payments recorded yet.">
-            {list.map((p) => (
+        <Card
+          title="Payment history"
+          headerTone="maroon"
+          action={
+            <div className="flex items-center gap-1">
+              <SearchBar variant="header" value={q} onChange={setQ} placeholder="Search by member name…" label="Search payments by member name" />
+              <Filter variant="header" label="Show payments for" value={filter} onChange={setFilter}
+                options={[{ value: '', label: 'All members' }, ...(members.data ?? []).map((m) => ({ value: m.id, label: m.name }))]} />
+            </div>
+          }
+        >
+          <Table headers={['Date', 'Member', 'Method', 'Amount']} isEmpty={rows.length === 0} emptyText="No payments recorded yet." pageSize={5} resetKey={`${filter}|${q}`} itemLabel="payments">
+            {rows.map((p) => (
               <tr key={p.id}>
                 <td className={td}>{fmtDate(p.paidAt)}</td>
                 <td className={`${td} font-semibold`}>{p.memberName}</td>

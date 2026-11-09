@@ -31,8 +31,8 @@ export function ReportsTab() {
         <Card title="Sessions by status">
           <BarList items={STATUSES.map((s) => ({ label: pretty(s), value: r.sessionsByStatus[s] }))} />
         </Card>
-        <Card title="Trainer attendance">
-          <Table headers={['Trainer', 'Held', 'Not held']}>
+        <Card title="Trainer attendance" headerTone="maroon">
+          <Table headers={['Trainer', 'Held', 'Not held']} pageSize={5} itemLabel="trainers">
             {r.trainerAttendance.map((t) => (
               <tr key={t.trainerId}>
                 <td className={`${td} font-semibold`}>{t.name}</td>

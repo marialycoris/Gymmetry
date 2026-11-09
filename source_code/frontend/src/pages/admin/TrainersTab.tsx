@@ -9,6 +9,8 @@ import { Select } from '../../components/Select';
 import { SpecializationSelect } from '../../components/SpecializationSelect';
 import { Modal } from '../../components/Modal';
 import { Badge } from '../../components/Badge';
+import { SearchBar } from '../../components/SearchBar';
+import { CreateButton } from '../../components/CreateButton';
 import { Table, td } from '../../components/Table';
 import { Loading, Notice } from '../../components/Widgets';
 
@@ -97,9 +99,17 @@ export function TrainersTab() {
     <>
       {error && <Notice tone="error">{error}</Notice>}
       <Notice>Disabling a trainer suspends their login and removes them from booking, but keeps their session history.</Notice>
-      <Card title="Trainers" action={<Button size="sm" onClick={() => setRegistering(true)}>Register trainer</Button>}>
-        <Input label="Search by name, username, or specialty" value={q} onChange={(e) => setQ(e.target.value)} />
-        <Table headers={['Trainer', 'Specialty', 'Status', '']} isEmpty={rows.length === 0} emptyText="No trainers match that search.">
+      <Card
+        title="Trainer Information"
+        headerTone="maroon"
+        action={
+          <div className="flex items-center gap-1">
+            <CreateButton onClick={() => setRegistering(true)} />
+            <SearchBar variant="header" value={q} onChange={setQ} placeholder="Search by name, username, or specialty…" label="Search trainers" />
+          </div>
+        }
+      >
+        <Table headers={['Trainer', 'Specialty', 'Status', '']} isEmpty={rows.length === 0} emptyText="No trainers match that search." pageSize={5} resetKey={q} itemLabel="trainers">
           {rows.map((t) => (
             <tr key={t.id}>
               <td className={`${td} font-semibold`}>
@@ -108,7 +118,7 @@ export function TrainersTab() {
               </td>
               <td className={td}>{t.specialty}</td>
               <td className={td}><Badge value={t.status} /></td>
-              <td className={`${td} text-right`}><Button size="sm" variant="secondary" onClick={() => setManaging(t)}>Manage</Button></td>
+              <td className={td}><Button size="sm" variant="secondary" onClick={() => setManaging(t)}>Manage</Button></td>
             </tr>
           ))}
         </Table>

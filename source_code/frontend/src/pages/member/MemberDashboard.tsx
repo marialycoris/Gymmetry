@@ -105,7 +105,7 @@ function MySessions({ memberId }: { memberId: number }) {
     <>
       {error && <Notice tone="error">{error}</Notice>}
       <Card>
-        <Table headers={['When', 'Trainer', 'Status', 'Note']} isEmpty={list.length === 0} emptyText="You have not booked a session yet.">
+        <Table headers={['When', 'Trainer', 'Status', 'Note']} isEmpty={list.length === 0} emptyText="You have not booked a session yet." pageSize={5} itemLabel="sessions">
           {list.map((s) => (
             <tr key={s.id}>
               <td className={td}>{fmtDate(s.date)}<span className="block text-xs text-gray-500">{fmtTime(s.time)}</span></td>
@@ -128,7 +128,7 @@ function MyPayments({ memberId }: { memberId: number }) {
     <>
       {error && <Notice tone="error">{error}</Notice>}
       <Card>
-        <Table headers={['Date', 'Method', 'Amount']} isEmpty={list.length === 0} emptyText="No payments on record.">
+        <Table headers={['Date', 'Method', 'Amount']} isEmpty={list.length === 0} emptyText="No payments on record." pageSize={5} itemLabel="payments">
           {list.map((p) => (
             <tr key={p.id}>
               <td className={td}>{fmtDate(p.paidAt)}</td>

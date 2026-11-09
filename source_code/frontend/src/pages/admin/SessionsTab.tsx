@@ -6,6 +6,7 @@ import { byDate, fmtDate, fmtTime } from '../../lib/format';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Select } from '../../components/Select';
+import { Filter } from '../../components/Filter';
 import { Modal } from '../../components/Modal';
 import { Badge, pretty } from '../../components/Badge';
 import { Table, td } from '../../components/Table';
@@ -37,27 +38,32 @@ export function SessionsTab() {
       {sessions.error && <Notice tone="error">{sessions.error}</Notice>}
       {err && !target && <Notice tone="error">{err}</Notice>}
 
-      <Card title={`Declined sessions (${declined.length})`}>
-        <Table headers={['When', 'Member', 'Declined by', 'Reason', '']} isEmpty={declined.length === 0} emptyText="No declined sessions to review.">
+      <Card title={`Declined sessions (${declined.length})`} headerTone="maroon">
+        <Table headers={['When', 'Member', 'Declined by', 'Reason', '']} isEmpty={declined.length === 0} emptyText="No declined sessions to review." pageSize={5} itemLabel="declined sessions">
           {declined.map((s) => (
             <tr key={s.id}>
               <td className={td}>{fmtDate(s.date)}<span className="block text-xs text-gray-500">{fmtTime(s.time)}</span></td>
               <td className={`${td} font-semibold`}>{s.memberName}</td>
               <td className={td}>{s.trainerName}</td>
               <td className={`${td} max-w-xs`}>{s.declineReason}</td>
-              <td className={`${td} text-right`}><Button size="sm" onClick={() => open(s)}>Reassign</Button></td>
+              <td className={td}><Button size="sm" onClick={() => open(s)}>Reassign</Button></td>
             </tr>
           ))}
         </Table>
       </Card>
 
-      <Card title="All sessions">
+      <Card
+        title="All sessions"
+        headerTone="maroon"
+        action={
+          <Filter variant="header" label="Filter by status" value={status} onChange={setStatus}
+            options={[{ value: '', label: 'All statuses' }, ...STATUSES.map((s) => ({ value: s, label: pretty(s) }))]} />
+        }
+      >
         <p className="text-sm text-gray-600 mb-4">
           Sessions the trainer has not marked by midnight are flagged “Not held” automatically. If a trainer’s mark is wrong, override it here.
         </p>
-        <Select label="Filter by status" value={status} onChange={(e) => setStatus(e.target.value)}
-          options={[{ value: '', label: 'All statuses' }, ...STATUSES.map((s) => ({ value: s, label: pretty(s) }))]} />
-        <Table headers={['When', 'Member', 'Trainer', 'Status', 'Attendance']} isEmpty={shown.length === 0} emptyText="No sessions with that status.">
+        <Table headers={['When', 'Member', 'Trainer', 'Status', 'Attendance']} isEmpty={shown.length === 0} emptyText="No sessions with that status." pageSize={5} resetKey={status} itemLabel="sessions">
           {shown.map((s) => (
             <tr key={s.id}>
               <td className={td}>{fmtDate(s.date)}<span className="block text-xs text-gray-500">{fmtTime(s.time)}</span></td>

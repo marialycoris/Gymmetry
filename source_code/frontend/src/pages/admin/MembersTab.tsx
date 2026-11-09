@@ -1,19 +1,24 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { useAsync } from '../../hooks/useAsync';
-import { GENDERS, PLANS, type Gender, type Member, type MemberRegistrationInput, type Plan } from '../../lib/types';
+import { GENDERS, PLANS, type Gender, type Member, type MemberRegistrationInput, type MemberStatus, type Plan } from '../../lib/types';
 import { daysUntil, fmtDate } from '../../lib/format';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Select } from '../../components/Select';
 import { Modal } from '../../components/Modal';
-import { Badge } from '../../components/Badge';
+import { Badge, pretty } from '../../components/Badge';
+import { SearchBar } from '../../components/SearchBar';
+import { Filter } from '../../components/Filter';
+import { CreateButton } from '../../components/CreateButton';
 import { Table, td } from '../../components/Table';
 import { Loading, Notice } from '../../components/Widgets';
 
 const planOptions = PLANS.map((p) => ({ value: p, label: p[0] + p.slice(1).toLowerCase() }));
 const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).toLowerCase() }));
+const memberStatuses: MemberStatus[] = ['ACTIVE', 'EXPIRED', 'DISABLED'];
+const statusOptions = [{ value: '', label: 'All statuses' }, ...memberStatuses.map((s) => ({ value: s, label: pretty(s) }))];
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const [f, setF] = useState<MemberRegistrationInput>({
@@ -79,20 +84,32 @@ function ManageMember({ m, onDone }: { m: Member; onDone: () => void }) {
 export function MembersTab() {
   const { data, loading, error, reload } = useAsync(() => api.getMembers());
   const [q, setQ] = useState('');
+  const [status, setStatus] = useState('');
   const [registering, setRegistering] = useState(false);
   const [managing, setManaging] = useState<Member | null>(null);
 
   if (loading) return <Loading />;
-  const rows = (data ?? []).filter((m) => m.name.toLowerCase().includes(q.toLowerCase()));
+  const search = q.toLowerCase();
+  const rows = (data ?? []).filter((m) =>
+    m.name.toLowerCase().includes(search) && (!status || m.status === status));
   const done = () => { setRegistering(false); setManaging(null); reload(); };
 
   return (
     <>
       {error && <Notice tone="error">{error}</Notice>}
       <Notice>Accounts with no activity for six months are disabled automatically. Renew or reactivate them here.</Notice>
-      <Card title="Members" action={<Button size="sm" onClick={() => setRegistering(true)}>Register member</Button>}>
-        <Input label="Search by name" value={q} onChange={(e) => setQ(e.target.value)} />
-        <Table headers={['Member', 'Plan', 'Status', 'Expires', 'Last visit', '']} isEmpty={rows.length === 0} emptyText="No members match that name.">
+      <Card
+        title="Member Information"
+        headerTone="maroon"
+        action={
+          <div className="flex items-center gap-1">
+            <CreateButton onClick={() => setRegistering(true)} />
+            <SearchBar variant="header" value={q} onChange={setQ} placeholder="Search by name…" label="Search members by name" />
+            <Filter variant="header" label="Filter members by status" value={status} onChange={setStatus} options={statusOptions} />
+          </div>
+        }
+      >
+        <Table headers={['Member', 'Plan', 'Status', 'Expires', 'Last visit', '']} isEmpty={rows.length === 0} emptyText="No members match those filters." pageSize={5} resetKey={`${q}|${status}`} itemLabel="members">
           {rows.map((m) => {
             const left = daysUntil(m.expiresAt);
             return (
@@ -102,7 +119,7 @@ export function MembersTab() {
                 <td className={td}><Badge value={m.status} /></td>
                 <td className={td}>{fmtDate(m.expiresAt)}<span className="block text-xs text-gray-500">{left >= 0 ? `in ${left} days` : `${-left} days ago`}</span></td>
                 <td className={td}>{fmtDate(m.lastAttendance)}</td>
-                <td className={`${td} text-right`}><Button size="sm" variant="secondary" onClick={() => setManaging(m)}>Manage</Button></td>
+                <td className={td}><Button size="sm" variant="secondary" onClick={() => setManaging(m)}>Manage</Button></td>
               </tr>
             );
           })}

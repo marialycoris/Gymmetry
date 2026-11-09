@@ -57,13 +57,13 @@ export function TrainerDashboard() {
       {sessions.loading ? <Loading /> : (
         <>
           {tab === 'requests' && (
-            <Card title={`Session requests (${pending.length})`}>
+            <Card title={`Session requests (${pending.length})`} headerTone="maroon">
               <Table headers={['When', 'Member', '']} isEmpty={pending.length === 0} emptyText="No requests waiting for you.">
                 {pending.map((s) => (
                   <tr key={s.id}>
                     <td className={td}><When s={s} /></td>
                     <td className={`${td} font-semibold`}>{s.memberName}</td>
-                    <td className={`${td} text-right whitespace-nowrap`}>
+                    <td className={`${td} whitespace-nowrap`}>
                       <Button size="sm" onClick={() => run(() => api.respondToSession(s.id, true))}>Accept</Button>{' '}
                       <Button size="sm" variant="secondary" onClick={() => openDecline(s)}>Decline</Button>
                     </td>
@@ -76,13 +76,13 @@ export function TrainerDashboard() {
           {tab === 'schedule' && (
             <>
               <Notice tone="warn">Mark each session as completed on the day. Sessions still unmarked at midnight are flagged “Not held” and count as an absence for you.</Notice>
-              <Card title="Accepted sessions">
+              <Card title="Accepted sessions" headerTone="maroon">
                 <Table headers={['When', 'Member', '']} isEmpty={upcoming.length === 0} emptyText="Nothing scheduled. Accept a request to see it here.">
                   {upcoming.map((s) => (
                     <tr key={s.id}>
                       <td className={td}><When s={s} /></td>
                       <td className={`${td} font-semibold`}>{s.memberName}</td>
-                      <td className={`${td} text-right`}>
+                      <td className={td}>
                         <Button size="sm" disabled={s.date > today()} title={s.date > today() ? 'Available on the session day' : undefined}
                           onClick={() => run(() => api.completeSession(s.id))}>Mark completed</Button>
                       </td>
@@ -99,8 +99,8 @@ export function TrainerDashboard() {
                 <Stat label="Sessions held" value={all.filter((s) => s.status === 'COMPLETED').length} />
                 <Stat label="Not held (absences)" value={all.filter((s) => s.status === 'NOT_HELD').length} />
               </div>
-              <Card title="Session record">
-                <Table headers={['When', 'Member', 'Status', 'Note']} isEmpty={record.length === 0} emptyText="Completed and declined sessions will show up here.">
+              <Card title="Session record" headerTone="maroon">
+                <Table headers={['When', 'Member', 'Status', 'Note']} isEmpty={record.length === 0} emptyText="Completed and declined sessions will show up here." pageSize={5} itemLabel="sessions">
                   {record.map((s) => (
                     <tr key={s.id}>
                       <td className={td}><When s={s} /></td>

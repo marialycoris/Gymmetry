@@ -33,7 +33,7 @@ export const Loading = () => <p role="status" className="text-gray-500 py-8">Loa
 
 export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn' | 'error' | 'success'; children: ReactNode }) {
   const styles = {
-    info: 'bg-sky-50 border-sky-500 text-sky-900',
+    info: 'bg-amber-50 border-amber-500 text-amber-900',
     warn: 'bg-amber-50 border-amber-500 text-amber-900',
     error: 'bg-red-50 border-gym-crimson text-red-800',
     success: 'bg-emerald-50 border-emerald-500 text-emerald-900',
