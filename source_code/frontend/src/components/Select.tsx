@@ -14,7 +14,7 @@ export function Select({ label, options, className = '', ...props }: SelectProps
       <div className="relative">
         <select
           id={id}
-          className="w-full appearance-none px-4 py-3 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gym-crimson focus:border-transparent"
+          className="w-full appearance-none px-4 py-3 pr-10 border border-gray-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-gym-crimson focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
           {...props}
         >
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

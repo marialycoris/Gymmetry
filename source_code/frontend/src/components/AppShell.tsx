@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import {
-  Activity, BarChart3, CalendarCheck, CalendarDays, CalendarPlus, ChevronLeft,
+  Activity, CalendarCheck, CalendarDays, CalendarPlus, ChevronLeft,
   ChevronRight, Circle, ClipboardCheck, CreditCard, Dumbbell, IdCard, Inbox,
   LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon,
 } from 'lucide-react';
@@ -22,7 +22,6 @@ const ICONS: Record<string, LucideIcon> = {
   trainers: Dumbbell,
   payments: CreditCard,
   sessions: CalendarCheck,
-  reports: BarChart3,
   pulse: Activity,
   membership: IdCard,
   book: CalendarPlus,

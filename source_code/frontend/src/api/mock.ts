@@ -1,6 +1,6 @@
 // In-memory demo data so the UI works before the backend is connected.
 // Delete this file (and set USE_MOCK = false in client.ts) once API is live.
-import type { Member, MemberRegistrationInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
+import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
 import { METHODS, PLANS, STATUSES } from '../lib/types';
 import type { User } from '../context/AuthContext';
 
@@ -14,7 +14,7 @@ const members: Member[] = [
   { id: 2, name: 'Jon Reyes', firstName: 'Jon', lastName: 'Reyes', username: 'jon', dateOfBirth: '1993-11-02', gender: 'MALE', contactNumber: '09172345678', emergencyContactNumber: '09182345678', plan: 'BASIC', status: 'ACTIVE', joinedAt: iso(-120), expiresAt: iso(5), lastAttendance: iso(-19) },
   { id: 3, name: 'Ana Cruz', firstName: 'Ana', lastName: 'Cruz', username: 'ana', dateOfBirth: '1990-06-25', gender: 'FEMALE', address: '8 Rizal Ave., Pasig', contactNumber: '09173456789', emergencyContactNumber: '09183456789', medicalCondition: 'Asthma', plan: 'VIP', status: 'EXPIRED', joinedAt: iso(-300), expiresAt: iso(-12), lastAttendance: iso(-40) },
   { id: 4, name: 'Paolo Lim', firstName: 'Paolo', lastName: 'Lim', username: 'paolo', dateOfBirth: '1988-01-18', gender: 'MALE', contactNumber: '09174567890', emergencyContactNumber: '09184567890', plan: 'BASIC', status: 'DISABLED', joinedAt: iso(-400), expiresAt: iso(-210), lastAttendance: iso(-200) },
-  { id: 5, name: 'Liza Tan', firstName: 'Liza', lastName: 'Tan', username: 'newbie', dateOfBirth: '1999-09-30', gender: 'FEMALE', address: '21 Bonifacio St., Taguig', contactNumber: '09175678901', emergencyContactNumber: '09185678901', medicalCondition: 'Mild scoliosis', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-60), expiresAt: iso(60), lastAttendance: iso(-2) },
+  { id: 5, name: 'Liza Tan', firstName: 'Liza', lastName: 'Tan', username: 'newbie', dateOfBirth: '1999-09-30', gender: 'FEMALE', address: '21 Bonifacio St., Taguig', contactNumber: '09175678901', emergencyContactNumber: '09185678901', medicalCondition: 'Mild scoliosis', plan: 'PREMIUM', status: 'ACTIVE', joinedAt: iso(-60), expiresAt: iso(60), lastAttendance: iso(-9) },
 ];
 const trainers: Trainer[] = [
   { id: 1, name: 'Rico Dela Cruz', firstName: 'Rico', lastName: 'Dela Cruz', email: 'rico@gymmetry.dev', username: 'trainer', gender: 'MALE', contactNumber: '09171112222', address: '14 Katipunan Ave., Quezon City', license: 'PT-0012345', specialty: 'Strength and Conditioning', status: 'ACTIVE' },
@@ -35,6 +35,18 @@ let sessions: Session[] = [
   mk(6, 5, 1, -2, '06:00', 'NOT_HELD'),
   mk(7, 5, 1, 3, '20:00', 'ACCEPTED'),
   mk(8, 2, 2, -19, '10:00', 'COMPLETED'),
+  // Completed history so Pulse can compare recent activity with previous activity.
+  mk(9, 1, 1, -11, '08:00', 'COMPLETED'),
+  mk(10, 1, 2, -18, '18:00', 'COMPLETED'),
+  mk(11, 1, 1, -33, '10:00', 'COMPLETED'),
+  mk(12, 1, 2, -40, '16:00', 'COMPLETED'),
+  mk(13, 2, 3, -35, '08:00', 'COMPLETED'),
+  mk(14, 2, 2, -44, '10:00', 'COMPLETED'),
+  mk(15, 2, 3, -52, '20:00', 'COMPLETED'),
+  mk(16, 5, 2, -9, '16:00', 'COMPLETED'),
+  mk(17, 5, 1, -16, '06:00', 'COMPLETED'),
+  mk(18, 5, 2, -28, '18:00', 'COMPLETED'),
+  mk(19, 5, 1, -38, '08:00', 'COMPLETED'),
 ];
 const payments: Payment[] = [
   { id: 1, memberId: 1, memberName: 'Maria Santos', amount: 1500, method: 'E_WALLET', paidAt: iso(-6) },
@@ -88,6 +100,36 @@ export const mock = {
       lastAttendance: null,
     };
     members.push(m);
+    return { ...m };
+  },
+  updateMember(id: number, i: MemberUpdateInput): Member {
+    const m = member(id);
+    const username = i.username.toLowerCase();
+    const currentUser = Object.values(USERS).find((u) => u.role === 'MEMBER' && u.personId === id);
+    const taken = members.some((x) => x.id !== id && x.username.toLowerCase() === username)
+      || trainers.some((t) => t.username.toLowerCase() === username)
+      || (!!USERS[username] && USERS[username] !== currentUser);
+    if (taken) throw new Error('That username is already taken.');
+
+    m.firstName = i.firstName;
+    m.lastName = i.lastName;
+    m.name = `${i.firstName} ${i.lastName}`.trim();
+    m.dateOfBirth = i.dateOfBirth;
+    m.gender = i.gender;
+    m.address = i.address?.trim() || undefined;
+    m.contactNumber = i.contactNumber;
+    m.emergencyContactNumber = i.emergencyContactNumber;
+    m.medicalCondition = i.medicalCondition?.trim() || undefined;
+    m.username = i.username;
+
+    if (currentUser) {
+      delete USERS[currentUser.username.toLowerCase()];
+      currentUser.username = i.username;
+      currentUser.name = m.name;
+      USERS[username] = currentUser;
+    }
+    sessions.forEach((s) => { if (s.memberId === id) s.memberName = m.name; });
+    payments.forEach((p) => { if (p.memberId === id) p.memberName = m.name; });
     return { ...m };
   },
   updateMemberPlan(id: number, plan: Plan): void { member(id).plan = plan; },
@@ -198,16 +240,59 @@ export const mock = {
   },
   getPulse(): PulseInsight[] {
     const order = { FOLLOW_UP: 0, WATCH: 1, POSITIVE: 2 };
+    const today = new Date(iso()).getTime();
+    const DAY = 864e5;
+    const daysAgo = (date: string) => Math.round((today - new Date(date).getTime()) / DAY);
+    const completed = (id: number) => sessions.filter((s) => s.memberId === id && s.status === 'COMPLETED');
+    const upcoming = (id: number) => sessions.filter((s) => s.memberId === id && (s.status === 'PENDING' || s.status === 'ACCEPTED') && daysAgo(s.date) < 0);
+
     return members.flatMap((m): PulseInsight[] => {
       if (m.status === 'DISABLED') return [];
-      const idle = since(m.lastAttendance ?? m.joinedAt);
+
+      // Attendance history comes from completed sessions; lastAttendance is a fallback.
+      const visits = completed(m.id).map((s) => s.date);
+      const attended = [...visits, ...(m.lastAttendance ? [m.lastAttendance] : [])];
+      const lastVisit = attended.length ? Math.max(...attended.map((d) => new Date(d).getTime())) : null;
+      const idle = lastVisit === null ? since(m.joinedAt) : Math.round((today - lastVisit) / DAY);
       const left = -since(m.expiresAt);
-      const base = { memberId: m.id, name: m.name };
-      if (idle >= 150) return [{ ...base, level: 'FOLLOW_UP', signal: 'Close to the six-month auto-disable', detail: `No attendance for ${idle} days.` }];
-      if (m.status === 'EXPIRED') return [{ ...base, level: 'FOLLOW_UP', signal: 'Membership expired', detail: `Expired ${-left} days ago. Last visit ${idle} days ago.` }];
-      if (idle >= 14) return [{ ...base, level: 'WATCH', signal: 'Attendance has dropped', detail: `No visit in ${idle} days.${left <= 7 ? ` Membership ends in ${left} days.` : ''}` }];
-      if (left <= 7) return [{ ...base, level: 'WATCH', signal: 'Membership ending soon', detail: `Ends in ${left} days.` }];
-      return [{ ...base, level: 'POSITIVE', signal: 'Attending regularly', detail: `Last visit ${idle} days ago.` }];
-    }).sort((a, b) => order[a.level] - order[b.level]);
+      const expiredDays = -left;
+      const recentVisits = visits.filter((d) => { const x = daysAgo(d); return x >= 0 && x <= 30; }).length;
+      const previousVisits = visits.filter((d) => { const x = daysAgo(d); return x > 30 && x <= 60; }).length;
+      const upcomingBookings = upcoming(m.id).length;
+      const missed = sessions.filter((s) => s.memberId === m.id && s.status === 'NOT_HELD' && daysAgo(s.date) >= 0 && daysAgo(s.date) <= 60).length;
+
+      const base = { memberId: m.id, name: m.name, recentVisits, previousVisits, upcomingBookings, daysLeft: left };
+      const attendanceDetail = `Last visit ${idle} day${idle === 1 ? '' : 's'} ago. ${recentVisits} visit${recentVisits === 1 ? '' : 's'} in the last 30 days vs ${previousVisits} in the previous 30.`;
+      const bookingDetail = upcomingBookings > 0 ? ` ${upcomingBookings} upcoming booking${upcomingBookings === 1 ? '' : 's'}.` : '';
+      const expiryNote = left >= 0 && left <= 7 ? ` Membership ends in ${left} day${left === 1 ? '' : 's'}.` : '';
+
+      if (m.status === 'EXPIRED') {
+        if (expiredDays >= 150) return [{ ...base, level: 'FOLLOW_UP', signal: 'Account will be auto-disabled soon', detail: `Membership expired ${expiredDays} days ago. ${attendanceDetail}`, suggestion: 'Call the member now to renew before the six-month auto-disable.' }];
+        return [{ ...base, level: 'FOLLOW_UP', signal: 'Membership expired', detail: `Membership expired ${expiredDays} day${expiredDays === 1 ? '' : 's'} ago. ${attendanceDetail}`, suggestion: 'Reach out to offer a renewal and help them book their next session.' }];
+      }
+
+      if (idle >= 150) return [{ ...base, level: 'FOLLOW_UP', signal: 'Inactive for five months', detail: `No attendance for ${idle} days.${bookingDetail}`, suggestion: 'Call the member to check in and offer a reason to return before the account is auto-disabled.' }];
+
+      // Declining attendance compared with the member's previous activity.
+      const declining = previousVisits > 0 && recentVisits < previousVisits;
+      const stopped = recentVisits === 0 && visits.length > 0 && idle >= 14;
+      if (declining || stopped) {
+        return [{ ...base, level: 'WATCH', signal: declining ? 'Attendance is declining' : 'Attendance has stopped', detail: `${attendanceDetail}${expiryNote}${bookingDetail}`, suggestion: 'Send a check-in and help them book a session this week.' }];
+      }
+
+      if (idle >= 14) return [{ ...base, level: 'WATCH', signal: 'Attendance has dropped', detail: `No visit in ${idle} days.${expiryNote}${bookingDetail}`, suggestion: 'Follow up to see what changed and offer a session slot.' }];
+
+      if (left >= 0 && left <= 7) return [{ ...base, level: 'WATCH', signal: 'Membership ending soon', detail: `Membership ends in ${left} day${left === 1 ? '' : 's'}. ${attendanceDetail}${bookingDetail}`, suggestion: 'Offer a renewal before the plan expires.' }];
+
+      if (missed >= 2) return [{ ...base, level: 'WATCH', signal: 'Missed sessions recently', detail: `${missed} sessions were not held in the last 60 days. ${attendanceDetail}${bookingDetail}`, suggestion: 'Follow up to confirm their schedule and rebook.' }];
+
+      return [{
+        ...base,
+        level: 'POSITIVE',
+        signal: upcomingBookings > 0 ? 'Attending regularly with sessions booked' : 'Attending regularly',
+        detail: `${attendanceDetail}${bookingDetail}`,
+        suggestion: upcomingBookings > 0 ? 'No action needed — keep it up.' : 'No action needed; encourage them to book their next session.',
+      }];
+    }).sort((a, b) => order[a.level] - order[b.level] || a.name.localeCompare(b.name));
   },
 };

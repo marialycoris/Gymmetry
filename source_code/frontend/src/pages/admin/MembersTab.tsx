@@ -8,6 +8,8 @@ import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Select } from '../../components/Select';
 import { Modal } from '../../components/Modal';
+import { MemberProfile } from '../../components/MemberProfile';
+import { MemberPlan } from '../../components/MemberPlan';
 import { Badge, pretty } from '../../components/Badge';
 import { SearchBar } from '../../components/SearchBar';
 import { Filter } from '../../components/Filter';
@@ -57,42 +59,27 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
   );
 }
 
-function ManageMember({ m, onDone }: { m: Member; onDone: () => void }) {
-  const [plan, setPlan] = useState<Plan>(m.plan);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true); setErr('');
-    try { await fn(); onDone(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
-  };
-  return (
-    <div>
-      <p className="text-sm text-gray-600 mb-4">Expires {fmtDate(m.expiresAt)}. Last visit {fmtDate(m.lastAttendance)}.</p>
-      {err && <Notice tone="error">{err}</Notice>}
-      <Select label="Plan" value={plan} onChange={(e) => setPlan(e.target.value as Plan)} options={planOptions} />
-      <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" disabled={busy || plan === m.plan} onClick={() => run(() => api.updateMemberPlan(m.id, plan))}>Save plan</Button>
-        <Button disabled={busy} onClick={() => run(() => api.renewMember(m.id))}>Renew for 30 days</Button>
-        {m.status === 'DISABLED'
-          ? <Button variant="secondary" disabled={busy} onClick={() => run(() => api.setMemberActive(m.id, true))}>Reactivate account</Button>
-          : <Button variant="danger" disabled={busy} onClick={() => run(() => api.setMemberActive(m.id, false))}>Disable account</Button>}
-      </div>
-    </div>
-  );
+interface MembersTabProps {
+  focusMemberId?: number | null;
+  onFocusHandled?: () => void;
 }
 
-export function MembersTab() {
+export function MembersTab({ focusMemberId, onFocusHandled }: MembersTabProps = {}) {
   const { data, loading, error, reload } = useAsync(() => api.getMembers());
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('');
   const [registering, setRegistering] = useState(false);
-  const [managing, setManaging] = useState<Member | null>(null);
+  const [profile, setProfile] = useState<Member | null>(null);
+  const [planMember, setPlanMember] = useState<Member | null>(null);
 
   if (loading) return <Loading />;
   const search = q.toLowerCase();
   const rows = (data ?? []).filter((m) =>
     m.name.toLowerCase().includes(search) && (!status || m.status === status));
-  const done = () => { setRegistering(false); setManaging(null); reload(); };
+  const focused = focusMemberId == null ? null : (data ?? []).find((m) => m.id === focusMemberId) ?? null;
+  const selected = profile ?? focused;
+  const closeProfile = () => { setProfile(null); onFocusHandled?.(); };
+  const done = () => { setRegistering(false); setProfile(null); setPlanMember(null); onFocusHandled?.(); reload(); };
 
   return (
     <>
@@ -119,15 +106,23 @@ export function MembersTab() {
                 <td className={td}><Badge value={m.status} /></td>
                 <td className={td}>{fmtDate(m.expiresAt)}<span className="block text-xs text-gray-500">{left >= 0 ? `in ${left} days` : `${-left} days ago`}</span></td>
                 <td className={td}>{fmtDate(m.lastAttendance)}</td>
-                <td className={td}><Button size="sm" variant="secondary" onClick={() => setManaging(m)}>Manage</Button></td>
+                <td className={td}>
+                  <div className="flex flex-wrap gap-1">
+                    <Button size="sm" variant="secondary" onClick={() => setProfile(m)}>Profile</Button>
+                    <Button size="sm" onClick={() => setPlanMember(m)}>Plan</Button>
+                  </div>
+                </td>
               </tr>
             );
           })}
         </Table>
       </Card>
       <Modal isOpen={registering} onClose={() => setRegistering(false)} title="Register member" hideFooter><RegisterForm onDone={done} /></Modal>
-      <Modal isOpen={!!managing} onClose={() => setManaging(null)} title={managing?.name ?? ''} hideFooter>
-        {managing && <ManageMember m={managing} onDone={done} />}
+      <Modal isOpen={!!selected} onClose={closeProfile} title={selected ? `${selected.name} — Profile` : 'Profile'} hideFooter>
+        {selected && <MemberProfile key={selected.id} member={selected} onSaved={(m) => { setProfile(m); reload(); }} />}
+      </Modal>
+      <Modal isOpen={!!planMember} onClose={() => setPlanMember(null)} title={planMember ? `${planMember.name} — Plan` : 'Plan'} hideFooter>
+        {planMember && <MemberPlan member={planMember} onDone={done} />}
       </Modal>
     </>
   );

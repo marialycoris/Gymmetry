@@ -5,8 +5,10 @@ type CardRadius = 'none' | 'sm' | 'md' | 'xl';
 interface CardProps {
   children: ReactNode;
   title?: string;
+  icon?: ReactNode;
   action?: ReactNode;
   className?: string;
+  bodyClassName?: string;
   radius?: CardRadius;
   headerTone?: 'default' | 'maroon';
 }
@@ -25,7 +27,7 @@ const HEADER_RADIUS: Record<CardRadius, string> = {
   xl: 'rounded-t-xl',
 };
 
-export function Card({ children, title, action, className = '', radius = 'xl', headerTone = 'default' }: CardProps) {
+export function Card({ children, title, icon, action, className = '', bodyClassName = '', radius = 'xl', headerTone = 'default' }: CardProps) {
   const maroon = headerTone === 'maroon';
 
   return (
@@ -36,11 +38,14 @@ export function Card({ children, title, action, className = '', radius = 'xl', h
             maroon ? 'border-gym-maroon bg-gym-maroon text-white' : 'border-gray-100'
           }`}
         >
-          <h2 className={`text-lg font-bold ${maroon ? 'text-white' : 'text-gym-black'}`}>{title}</h2>
+          <div className="flex min-w-0 items-center gap-2">
+            {icon && <span className={`shrink-0 ${maroon ? 'text-white' : 'text-gym-crimson'}`}>{icon}</span>}
+            <h2 className={`truncate text-lg font-bold ${maroon ? 'text-white' : 'text-gym-black'}`}>{title}</h2>
+          </div>
           {action}
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className={`p-6 ${bodyClassName}`}>{children}</div>
     </section>
   );
 }

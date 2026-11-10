@@ -1,11 +1,14 @@
 import type { ReactNode } from 'react';
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+export function Stat({ label, value, hint, icon }: { label: string; value: ReactNode; hint?: string; icon?: ReactNode }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <p className="text-sm font-semibold text-gray-500">{label}</p>
-      <p className="font-display text-5xl font-extrabold leading-none mt-2">{value}</p>
-      {hint && <p className="text-xs text-gray-500 mt-2">{hint}</p>}
+    <div className="flex items-start justify-between gap-3 bg-white border border-gray-200 rounded-xl p-5">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-500">{label}</p>
+        <p className="font-display text-5xl font-extrabold leading-none mt-2">{value}</p>
+        {hint && <p className="text-xs text-gray-500 mt-2">{hint}</p>}
+      </div>
+      {icon && <span className="shrink-0 rounded-lg bg-gym-crimson/10 p-2 text-gym-crimson">{icon}</span>}
     </div>
   );
 }

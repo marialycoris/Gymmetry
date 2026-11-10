@@ -12,7 +12,7 @@ export function Input({ label, className = '', ...props }: InputProps) {
       <label htmlFor={id} className="block text-sm font-bold text-gym-black mb-2">{label}</label>
       <input
         id={id}
-        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gym-crimson focus:border-transparent transition-shadow"
+        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gym-crimson focus:border-transparent transition-shadow disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
         {...props}
       />
     </div>

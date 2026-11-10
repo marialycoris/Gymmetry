@@ -1,5 +1,5 @@
 import type { User } from '../context/AuthContext';
-import type { Member, MemberRegistrationInput, Trainer, TrainerRegistrationInput, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
+import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
 import { mock } from './mock';
 
 const API_URL = 'http://localhost:8080/api';
@@ -41,6 +41,9 @@ export const api = {
   // POST /members  (creates the account with a temporary password; first login forces a change)
   registerMember: (input: MemberRegistrationInput) =>
     call(() => mock.registerMember(input), () => http<Member>('/members', send('POST', input))),
+  // PUT /members/:id  (edit profile details)
+  updateMember: (id: number, input: MemberUpdateInput) =>
+    call(() => mock.updateMember(id, input), () => http<Member>(`/members/${id}`, send('PUT', input))),
   // PUT /members/:id/plan
   updateMemberPlan: (id: number, plan: Plan) =>
     call(() => mock.updateMemberPlan(id, plan), () => http<void>(`/members/${id}/plan`, send('PUT', { plan }))),

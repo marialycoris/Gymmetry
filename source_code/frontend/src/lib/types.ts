@@ -25,6 +25,11 @@ export interface MemberRegistrationInput {
   address?: string; contactNumber: string; emergencyContactNumber: string; medicalCondition?: string;
   username: string; tempPassword: string; plan: Plan;
 }
+export interface MemberUpdateInput {
+  firstName: string; lastName: string; dateOfBirth: string; gender: Gender;
+  address?: string; contactNumber: string; emergencyContactNumber: string; medicalCondition?: string;
+  username: string;
+}
 export interface Trainer {
   id: number; name: string; firstName: string; lastName: string; email: string; username: string;
   gender: Gender; contactNumber: string; address: string; license?: string;
@@ -44,7 +49,8 @@ export interface Payment {
   id: number; memberId: number; memberName: string; amount: number; method: PayMethod; paidAt: string;
 }
 export interface PulseInsight {
-  memberId: number; name: string; level: PulseLevel; signal: string; detail: string;
+  memberId: number; name: string; level: PulseLevel; signal: string; detail: string; suggestion: string;
+  recentVisits: number; previousVisits: number; upcomingBookings: number; daysLeft: number;
 }
 export interface Reports {
   revenueTotal: number;
