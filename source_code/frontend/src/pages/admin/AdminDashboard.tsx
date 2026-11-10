@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Activity, Banknote, CalendarCheck, Dumbbell, TrendingUp, TriangleAlert, Users, Wallet } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAsync } from '../../hooks/useAsync';
+import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { METHODS, PLANS, STATUSES, type PayMethod, type Plan, type PulseLevel, type SessionStatus } from '../../lib/types';
 import { money } from '../../lib/format';
 import { AppShell, type NavItem } from '../../components/AppShell';
@@ -133,7 +134,7 @@ function Overview({ go }: { go: (id: string) => void }) {
 }
 
 export function AdminDashboard() {
-  const [tab, setTab] = useState('overview');
+  const [tab, setTab] = usePersistentTab('gymmetry_admin_tab', 'overview', NAV.map((n) => n.id));
   const [memberFocus, setMemberFocus] = useState<number | null>(null);
   const navigate = (id: string) => {
     setMemberFocus(null);

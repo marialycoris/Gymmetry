@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useAsync } from '../../hooks/useAsync';
+import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, fmtDate, fmtTime, today } from '../../lib/format';
 import { AppShell, type NavItem } from '../../components/AppShell';
 import { Button } from '../../components/Button';
@@ -26,7 +27,7 @@ const When = ({ s }: { s: Session }) => (
 export function TrainerDashboard() {
   const { user } = useAuth();
   const trainerId = user!.personId;
-  const [tab, setTab] = useState('requests');
+  const [tab, setTab] = usePersistentTab('gymmetry_trainer_tab', 'requests', NAV.map((n) => n.id));
   const sessions = useAsync(() => api.getSessions({ trainerId }), [trainerId]);
   const [err, setErr] = useState('');
   const [declining, setDeclining] = useState<Session | null>(null);

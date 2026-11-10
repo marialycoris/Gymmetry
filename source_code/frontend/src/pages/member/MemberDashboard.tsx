@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
 import { useAsync } from '../../hooks/useAsync';
+import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, daysUntil, fmtDate, fmtTime, money, today } from '../../lib/format';
 import { AppShell, type NavItem } from '../../components/AppShell';
 import { Button } from '../../components/Button';
@@ -145,7 +146,7 @@ function MyPayments({ memberId }: { memberId: number }) {
 export function MemberDashboard() {
   const { user } = useAuth();
   const memberId = user!.personId;
-  const [tab, setTab] = useState('membership');
+  const [tab, setTab] = usePersistentTab('gymmetry_member_tab', 'membership', NAV.map((n) => n.id));
   return (
     <AppShell nav={NAV} active={tab} onNavigate={setTab}>
       {tab === 'membership' && <Membership memberId={memberId} />}
