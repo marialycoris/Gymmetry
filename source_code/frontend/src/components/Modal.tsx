@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { Button } from './Button';
+import { LoadingOverlay } from './Spinner';
 
 interface ModalProps {
   isOpen: boolean;
@@ -7,9 +8,11 @@ interface ModalProps {
   title: string;
   children: ReactNode;
   hideFooter?: boolean; // hide the default Close button when the body has its own actions
+  isLoading?: boolean; // show a spinner overlay while a request is in flight
+  loadingLabel?: string;
 }
 
-export function Modal({ isOpen, onClose, title, children, hideFooter }: ModalProps) {
+export function Modal({ isOpen, onClose, title, children, hideFooter, isLoading, loadingLabel }: ModalProps) {
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -22,7 +25,7 @@ export function Modal({ isOpen, onClose, title, children, hideFooter }: ModalPro
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
-        className="bg-gym-bg rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        className="relative bg-gym-bg rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
         <div className="flex shrink-0 justify-between items-center px-6 py-4 bg-gym-maroon rounded-t-xl">
           <h2 className="text-xl font-bold text-white">{title}</h2>
           <button onClick={onClose} aria-label="Close" className="text-white hover:text-gray-200 text-2xl font-bold leading-none">&times;</button>
@@ -35,6 +38,7 @@ export function Modal({ isOpen, onClose, title, children, hideFooter }: ModalPro
             <Button variant="secondary" onClick={onClose}>Close</Button>
           </div>
         )}
+        <LoadingOverlay show={!!isLoading} label={loadingLabel} />
       </div>
     </div>
   );

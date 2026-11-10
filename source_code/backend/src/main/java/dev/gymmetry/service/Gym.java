@@ -58,6 +58,56 @@ public class Gym {
         return memberRepo.findAll();
     }
 
+    public Member updateMemberDetails(int id, String firstName, String lastName,
+                                      LocalDate dateOfBirth, String gender, String address,
+                                      String contactNumber, String emergencyContactNumber,
+                                      String medicalCondition) {
+        Member m = findMember(id);
+        m.setFirstName(firstName);
+        m.setLastName(lastName);
+        m.setDateOfBirth(dateOfBirth);
+        m.setGender(gender);
+        m.setAddress(address);
+        m.setContactNumber(contactNumber);
+        m.setEmergencyContactNumber(emergencyContactNumber);
+        m.setMedicalCondition(medicalCondition);
+        memberRepo.update(m);
+        return m;
+    }
+
+    public void updateMemberPlan(int id, MembershipPlan plan) {
+        Member m = findMember(id);
+        m.setPlan(plan);
+        memberRepo.update(m);
+    }
+
+    public void renewMember(int id) {
+        Member m = findMember(id);
+        m.renew(m.getPlan(), LocalDate.now());
+        memberRepo.update(m);
+    }
+
+    public void setMemberActive(int id, boolean active) {
+        Member m = findMember(id);
+        User user = authService.findByPerson(m.getRole(), m.getId());
+        if (user == null) throw new IllegalStateException("No login account for member " + id);
+        if (active) authService.enableUser(user);
+        else authService.disableUser(user);
+    }
+
+    public User findMemberUser(int id) {
+        Member m = findMember(id);
+        return authService.findByPerson(m.getRole(), m.getId());
+    }
+
+    public void renameMemberUser(int id, String oldUsername, String newUsername) {
+        if (newUsername == null || newUsername.isBlank() || newUsername.equals(oldUsername)) return;
+        Member m = findMember(id);
+        User user = authService.findByPerson(m.getRole(), m.getId());
+        if (user == null) throw new IllegalStateException("No login account for member " + id);
+        authService.renameUsername(user, newUsername);
+    }
+
     // ============================================================
     // TRAINERS
     // ============================================================
@@ -288,6 +338,18 @@ public class Gym {
         return attendanceRepo.findAll().stream()
                 .filter(a -> a.getMember().getId() == memberId)
                 .collect(Collectors.toList());
+    }
+
+    public List<AttendanceRecord> getAllAttendance() {
+        return attendanceRepo.findAll();
+    }
+
+    public List<Session> getAllSessions() {
+        return sessionRepo.findAll();
+    }
+
+    public List<Payment> getAllPayments() {
+        return paymentRepo.findAll();
     }
 
     public Map<SessionStatus, Long> countSessionsByStatus() {

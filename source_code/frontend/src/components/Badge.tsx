@@ -15,11 +15,20 @@ const BY_VALUE: Record<string, Tone> = {
   FOLLOW_UP: 'red', WATCH: 'amber', POSITIVE: 'green',
 };
 
-export const pretty = (v: string) => { const s = v.replace(/_/g, ' ').toLowerCase(); return s[0].toUpperCase() + s.slice(1); };
+const normalize = (v: unknown): string => {
+  if (typeof v === 'string') return v;
+  if (v && typeof v === 'object' && 'name' in v) return String((v as { name: unknown }).name ?? '');
+  return v == null ? '' : String(v);
+};
+
+export const pretty = (v: unknown) => {
+  const s = normalize(v).replace(/_/g, ' ').toLowerCase();
+  return s ? s[0].toUpperCase() + s.slice(1) : '';
+};
 
 export function Badge({ value, label, tone }: { value: string; label?: string; tone?: Tone }) {
   return (
-    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${TONES[tone ?? BY_VALUE[value] ?? 'gray']}`}>
+    <span className={`inline-block px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${TONES[tone ?? BY_VALUE[normalize(value).toUpperCase()] ?? 'gray']}`}>
       {label ?? pretty(value)}
     </span>
   );

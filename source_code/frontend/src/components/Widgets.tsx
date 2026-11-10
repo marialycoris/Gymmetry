@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Spinner } from './Spinner';
 
 export function Stat({ label, value, hint, icon }: { label: string; value: ReactNode; hint?: string; icon?: ReactNode }) {
   return (
@@ -32,7 +33,14 @@ export function BarList({ items }: { items: { label: string; value: number; disp
   );
 }
 
-export const Loading = () => <p role="status" className="text-gray-500 py-8">Loading…</p>;
+export function Loading({ label = 'Loading…', className = '' }: { label?: string; className?: string }) {
+  return (
+    <div role="status" aria-live="polite" className={`flex flex-col items-center justify-center gap-3 py-10 text-gray-500 ${className}`}>
+      <Spinner size="lg" className="text-gym-crimson" label={label} />
+      <span className="text-sm font-semibold">{label}</span>
+    </div>
+  );
+}
 
 export function Notice({ tone = 'info', children }: { tone?: 'info' | 'warn' | 'error' | 'success'; children: ReactNode }) {
   const styles = {

@@ -5,7 +5,7 @@ import dev.gymmetry.enums.Role;
 
 public class User {
 
-    private final String username;
+    private String username;
     private String passwordHash;
     private final Role role;
     private final Person person;
@@ -30,6 +30,12 @@ public class User {
     }
 
     public String getUsername() { return username; }
+
+    public void setUsername(String username) {
+        if (username == null || username.isBlank())
+            throw new IllegalArgumentException("Username cannot be blank");
+        this.username = username;
+    }
     public String getPasswordHash() { return passwordHash; }
     public Role getRole() { return role; }
     public Person getPerson() { return person; }

@@ -33,22 +33,25 @@ export function TrainerDashboard() {
   const [declining, setDeclining] = useState<Session | null>(null);
   const [reason, setReason] = useState('');
   const [reasonErr, setReasonErr] = useState('');
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   const all = [...(sessions.data ?? [])].sort(byDate);
   const pending = all.filter((s) => s.status === 'PENDING');
   const upcoming = all.filter((s) => s.status === 'ACCEPTED');
   const record = all.filter((s) => ['COMPLETED', 'NOT_HELD', 'DECLINED'].includes(s.status)).reverse();
 
-  const run = async (fn: () => Promise<unknown>) => {
+  const run = async (fn: () => Promise<unknown>, id: string) => {
+    setBusyId(id);
     setErr('');
-    try { await fn(); sessions.reload(); } catch (x: any) { setErr(x.message); }
+    try { await fn(); sessions.reload(); } catch (x: any) { setErr(x.message); } finally { setBusyId(null); }
   };
   const confirmDecline = async () => {
     if (!reason.trim()) return setReasonErr('Tell the member why you are declining.');
+    setBusyId('decline');
     try {
       await api.respondToSession(declining!.id, false, reason);
       setDeclining(null); sessions.reload();
-    } catch (x: any) { setReasonErr(x.message); }
+    } catch (x: any) { setReasonErr(x.message); } finally { setBusyId(null); }
   };
   const openDecline = (s: Session) => { setDeclining(s); setReason(''); setReasonErr(''); };
 
@@ -65,8 +68,13 @@ export function TrainerDashboard() {
                     <td className={td}><When s={s} /></td>
                     <td className={`${td} font-semibold`}>{s.memberName}</td>
                     <td className={`${td} whitespace-nowrap`}>
-                      <Button size="sm" onClick={() => run(() => api.respondToSession(s.id, true))}>Accept</Button>{' '}
-                      <Button size="sm" variant="secondary" onClick={() => openDecline(s)}>Decline</Button>
+                      <Button
+                        size="sm"
+                        isLoading={busyId === `accept-${s.id}`}
+                        disabled={busyId !== null && busyId !== `accept-${s.id}`}
+                        onClick={() => run(() => api.respondToSession(s.id, true), `accept-${s.id}`)}
+                      >Accept</Button>{' '}
+                      <Button size="sm" variant="secondary" disabled={busyId !== null} onClick={() => openDecline(s)}>Decline</Button>
                     </td>
                   </tr>
                 ))}
@@ -84,8 +92,13 @@ export function TrainerDashboard() {
                       <td className={td}><When s={s} /></td>
                       <td className={`${td} font-semibold`}>{s.memberName}</td>
                       <td className={td}>
-                        <Button size="sm" disabled={s.date > today()} title={s.date > today() ? 'Available on the session day' : undefined}
-                          onClick={() => run(() => api.completeSession(s.id))}>Mark completed</Button>
+                        <Button
+                          size="sm"
+                          isLoading={busyId === `complete-${s.id}`}
+                          disabled={s.date > today() || (busyId !== null && busyId !== `complete-${s.id}`)}
+                          title={s.date > today() ? 'Available on the session day' : undefined}
+                          onClick={() => run(() => api.completeSession(s.id), `complete-${s.id}`)}
+                        >Mark completed</Button>
                       </td>
                     </tr>
                   ))}
@@ -117,15 +130,22 @@ export function TrainerDashboard() {
         </>
       )}
 
-      <Modal isOpen={!!declining} onClose={() => setDeclining(null)} title="Decline session" hideFooter>
+      <Modal
+        isOpen={!!declining}
+        onClose={() => { if (busyId !== 'decline') setDeclining(null); }}
+        title="Decline session"
+        hideFooter
+        isLoading={busyId === 'decline'}
+        loadingLabel="Declining session…"
+      >
         {declining && (
           <>
             <p className="text-sm text-gray-600 mb-4">{declining.memberName}, {fmtDate(declining.date)} at {fmtTime(declining.time)}. An admin will offer them another trainer.</p>
             {reasonErr && <Notice tone="error">{reasonErr}</Notice>}
             <Input label="Reason for declining" value={reason} onChange={(e) => setReason(e.target.value)} required />
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setDeclining(null)}>Cancel</Button>
-              <Button variant="danger" onClick={confirmDecline}>Decline session</Button>
+              <Button variant="secondary" onClick={() => setDeclining(null)} disabled={busyId === 'decline'}>Cancel</Button>
+              <Button variant="danger" onClick={confirmDecline} isLoading={busyId === 'decline'}>Decline session</Button>
             </div>
           </>
         )}

@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react';
+import { Spinner } from './Spinner';
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
@@ -17,8 +18,18 @@ export function Button({ children, variant = 'primary', size = 'md', isLoading, 
   };
 
   return (
-    <button className={`${baseStyle} ${sizes[size]} ${variants[variant]} ${className}`} disabled={isLoading || disabled} {...props}>
-      {isLoading ? 'Working…' : children}
+    <button
+      className={`${baseStyle} ${sizes[size]} ${variants[variant]} ${className}`}
+      disabled={isLoading || disabled}
+      aria-busy={isLoading || undefined}
+      {...props}
+    >
+      {isLoading ? (
+        <span className="inline-flex items-center justify-center gap-2">
+          <Spinner size="sm" className="text-current" />
+          {children}
+        </span>
+      ) : children}
     </button>
   );
 }

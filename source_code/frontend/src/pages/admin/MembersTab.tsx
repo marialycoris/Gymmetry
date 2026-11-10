@@ -15,6 +15,7 @@ import { SearchBar } from '../../components/SearchBar';
 import { Filter } from '../../components/Filter';
 import { CreateButton } from '../../components/CreateButton';
 import { Table, td } from '../../components/Table';
+import { LoadingOverlay } from '../../components/Spinner';
 import { Loading, Notice } from '../../components/Widgets';
 
 const planOptions = PLANS.map((p) => ({ value: p, label: p[0] + p.slice(1).toLowerCase() }));
@@ -38,7 +39,8 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     try { await api.registerMember(f); onDone(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
   };
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="relative">
+      <LoadingOverlay show={busy} label="Registering member…" />
       {err && <Notice tone="error">{err}</Notice>}
       <div className="grid grid-cols-2 gap-x-4">
         <Input label="First name" value={f.firstName} onChange={set('firstName')} required />

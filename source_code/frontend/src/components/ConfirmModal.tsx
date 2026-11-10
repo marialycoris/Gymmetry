@@ -48,7 +48,7 @@ export function ConfirmModal({
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={close} title={title} hideFooter>
+    <Modal isOpen={isOpen} onClose={close} title={title} hideFooter isLoading={busy} loadingLabel="Working…">
       {error && <Notice tone="error">{error}</Notice>}
       <div className="text-gray-700 mb-6">{message}</div>
       <div className="flex justify-end gap-2">

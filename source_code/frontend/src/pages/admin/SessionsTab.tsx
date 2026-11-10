@@ -79,7 +79,7 @@ export function SessionsTab() {
         </Table>
       </Card>
 
-      <Modal isOpen={!!target} onClose={() => setTarget(null)} title="Reassign session" hideFooter>
+      <Modal isOpen={!!target} onClose={() => setTarget(null)} title="Reassign session" hideFooter isLoading={busy} loadingLabel="Reassigning…">
         {target && (
           <>
             <p className="text-sm text-gray-600 mb-4">
@@ -89,7 +89,7 @@ export function SessionsTab() {
             <Select label="New trainer" value={trainerId} onChange={(e) => setTrainerId(e.target.value)}
               options={others.map((t) => ({ value: t.id, label: `${t.name} (${t.specialty})` }))} />
             <div className="flex justify-end gap-2">
-              <Button variant="secondary" onClick={() => setTarget(null)}>Cancel</Button>
+              <Button variant="secondary" onClick={() => setTarget(null)} disabled={busy}>Cancel</Button>
               <Button isLoading={busy} onClick={() => run(() => api.reassignSession(target.id, Number(trainerId)))}>Reassign</Button>
             </div>
           </>

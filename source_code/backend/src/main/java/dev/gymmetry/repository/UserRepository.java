@@ -47,6 +47,18 @@ public class UserRepository {
         }
     }
 
+    public void rename(String oldUsername, String newUsername) {
+        String sql = "UPDATE users SET username = ? WHERE username = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, newUsername);
+            ps.setString(2, oldUsername);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to rename user", e);
+        }
+    }
+
     public User findByUsername(String username) {
         String sql = "SELECT * FROM users WHERE username = ?";
         try (Connection conn = Database.getConnection();

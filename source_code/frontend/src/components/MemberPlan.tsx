@@ -5,6 +5,7 @@ import { fmtDate } from '../lib/format';
 import { Button } from './Button';
 import { Select } from './Select';
 import { Badge } from './Badge';
+import { LoadingOverlay } from './Spinner';
 import { Notice } from './Widgets';
 
 const planOptions = PLANS.map((p) => ({ value: p, label: p[0] + p.slice(1).toLowerCase() }));
@@ -33,7 +34,8 @@ export function MemberPlan({ member, onDone }: MemberPlanProps) {
   };
 
   return (
-    <div>
+    <div className="relative">
+      <LoadingOverlay show={busy} label="Updating plan…" />
       <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
         <div>
           <p className="text-sm text-gray-500">Current plan</p>

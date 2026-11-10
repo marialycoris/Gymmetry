@@ -12,6 +12,7 @@ import { Badge } from '../../components/Badge';
 import { SearchBar } from '../../components/SearchBar';
 import { CreateButton } from '../../components/CreateButton';
 import { Table, td } from '../../components/Table';
+import { LoadingOverlay } from '../../components/Spinner';
 import { Loading, Notice } from '../../components/Widgets';
 
 const errorText = (x: unknown) => (x instanceof Error ? x.message : String(x));
@@ -33,7 +34,8 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     try { await api.registerTrainer(f); onDone(); } catch (x) { setErr(errorText(x)); } finally { setBusy(false); }
   };
   return (
-    <form onSubmit={submit}>
+    <form onSubmit={submit} className="relative">
+      <LoadingOverlay show={busy} label="Registering trainer…" />
       {err && <Notice tone="error">{err}</Notice>}
       <div className="grid grid-cols-2 gap-x-4">
         <Input label="First name" value={f.firstName} onChange={set('firstName')} required />
@@ -65,7 +67,8 @@ function ManageTrainer({ t, onDone }: { t: Trainer; onDone: () => void }) {
   const dirty = f.name !== t.name || f.email !== t.email || f.specialty !== t.specialty;
 
   return (
-    <div>
+    <div className="relative">
+      <LoadingOverlay show={busy} label="Saving changes…" />
       {err && <Notice tone="error">{err}</Notice>}
       <Input label="Full name" value={f.name} onChange={set('name')} required />
       <Input label="Email" type="email" value={f.email} onChange={set('email')} required />
@@ -108,7 +111,16 @@ export function TrainersTab() {
           </div>
         }
       >
-        <Table headers={['Trainer', 'Specialty', 'Status', '']} isEmpty={rows.length === 0} emptyText="No trainers match that search." pageSize={5} resetKey={q} itemLabel="trainers">
+        <Table
+          headers={['Trainer', 'Specialty', 'Status', '']}
+          isEmpty={rows.length === 0}
+          emptyText={q
+            ? 'No trainers match that search.'
+            : 'No trainers recorded yet. Use the + button above to register your first trainer.'}
+          pageSize={5}
+          resetKey={q}
+          itemLabel="trainers"
+        >
           {rows.map((t) => (
             <tr key={t.id}>
               <td className={`${td} font-semibold`}>

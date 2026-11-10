@@ -90,6 +90,17 @@ public class AuthService {
         completePasswordChange(user, newPassword);
     }
 
+    public void renameUsername(User user, String newUsername) {
+        if (newUsername == null || newUsername.isBlank()) {
+            throw new IllegalArgumentException("Username cannot be blank");
+        }
+        if (userRepo.findByUsername(newUsername) != null) {
+            throw new DuplicateUserException(newUsername);
+        }
+        userRepo.rename(user.getUsername(), newUsername);
+        user.setUsername(newUsername);
+    }
+
     public User findByUsername(String username) {
         return userRepo.findByUsername(username);
     }

@@ -6,7 +6,8 @@ const API_URL = 'http://localhost:8080/api';
 
 // TODO: set to false once the backend is connected. While true, every call below
 // returns demo data from ./mock.ts. Demo logins: admin, trainer, member, newbie (any password).
-export const USE_MOCK = true;
+// Disabled: now calling the real backend/database below.
+export const USE_MOCK = false;
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { headers: { 'Content-Type': 'application/json' }, ...init });
