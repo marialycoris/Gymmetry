@@ -42,7 +42,7 @@ export interface TrainerRegistrationInput {
 }
 export interface Session {
   id: number; memberId: number; memberName: string; trainerId: number; trainerName: string;
-  date: string; time: string; status: SessionStatus; declineReason?: string;
+  date: string; time: string; status: SessionStatus; declineReason?: string; completionNote?: string;
 }
 export interface Slot { time: string; available: boolean }
 export interface Payment {

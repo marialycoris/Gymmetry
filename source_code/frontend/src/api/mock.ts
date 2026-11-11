@@ -213,8 +213,9 @@ export const mock = {
     if (slotTaken(trainerId, s.date, s.time)) throw new Error(`${trainerName(trainerId)} is already booked at that time.`);
     Object.assign(s, { trainerId, trainerName: trainerName(trainerId), status: 'PENDING', declineReason: undefined });
   },
-  completeSession(id: number): void {
-    const s = session(id); s.status = 'COMPLETED'; member(s.memberId).lastAttendance = s.date;
+  completeSession(id: number, note?: string): void {
+    const s = session(id); s.status = 'COMPLETED'; s.completionNote = note?.trim() || undefined;
+    member(s.memberId).lastAttendance = s.date;
   },
   overrideAttendance(id: number, status: 'COMPLETED' | 'NOT_HELD'): void {
     const s = session(id); s.status = status;

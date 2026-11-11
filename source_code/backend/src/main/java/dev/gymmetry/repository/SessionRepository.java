@@ -25,9 +25,9 @@ public class SessionRepository {
         String sql = """
             INSERT INTO sessions (member_id, trainer_id, scheduled_at, status,
                 trainer_status, trainer_overridden, override_reason,
-                decline_reason, not_held_reason, cancellation_reason,
+                decline_reason, completion_note, not_held_reason, cancellation_reason,
                 created_at, updated_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
             RETURNING id
             """;
         try (Connection conn = Database.getConnection();
@@ -47,7 +47,7 @@ public class SessionRepository {
         String sql = """
             UPDATE sessions SET member_id=?, trainer_id=?, scheduled_at=?,
                 status=?, trainer_status=?, trainer_overridden=?, override_reason=?,
-                decline_reason=?, not_held_reason=?, cancellation_reason=?,
+                decline_reason=?, completion_note=?, not_held_reason=?, cancellation_reason=?,
                 updated_at=?
             WHERE id=?
             """;
@@ -99,6 +99,7 @@ public class SessionRepository {
         ps.setBoolean(i++, s.isTrainerStatusOverridden());
         ps.setString(i++, s.getOverrideReason());
         ps.setString(i++, s.getDeclineReason());
+        ps.setString(i++, s.getCompletionNote());
         ps.setString(i++, s.getNotHeldReason() == null ? null : s.getNotHeldReason().name());
         ps.setString(i++, s.getCancellationReason() == null ? null : s.getCancellationReason().name());
         if (forUpdate) {
@@ -122,6 +123,7 @@ public class SessionRepository {
                 rs.getBoolean("trainer_overridden"),
                 rs.getString("override_reason"),
                 rs.getString("decline_reason"),
+                rs.getString("completion_note"),
                 rs.getString("not_held_reason") == null ? null
                         : NotHeldReason.valueOf(rs.getString("not_held_reason")),
                 rs.getString("cancellation_reason") == null ? null

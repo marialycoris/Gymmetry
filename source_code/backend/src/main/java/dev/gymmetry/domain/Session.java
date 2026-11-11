@@ -23,6 +23,7 @@ public class Session {
 
     // Outcome reasons
     private String declineReason;
+    private String completionNote;
     private NotHeldReason notHeldReason;
     private CancellationReason cancellationReason;
 
@@ -52,6 +53,7 @@ public class Session {
     public boolean isTrainerStatusOverridden() { return trainerStatusOverridden; }
     public String getOverrideReason() { return overrideReason; }
     public String getDeclineReason() { return declineReason; }
+    public String getCompletionNote() { return completionNote; }
     public NotHeldReason getNotHeldReason() { return notHeldReason; }
     public CancellationReason getCancellationReason() { return cancellationReason; }
     public LocalDateTime getCreatedAt() { return createdAt; }
@@ -110,10 +112,13 @@ public class Session {
         touch();
     }
 
-    public void markMemberPresent() {
+    public void markMemberPresent() { markMemberPresent(null); }
+
+    public void markMemberPresent(String note) {
         requireStatus(SessionStatus.SCHEDULED, "mark present");
         this.status = SessionStatus.COMPLETED;
         this.trainerStatus = TrainerSessionStatus.PRESENT;
+        this.completionNote = note == null || note.isBlank() ? null : note.trim();
         touch();
     }
 
@@ -176,6 +181,7 @@ public class Session {
             boolean overridden,
             String overrideReason,
             String declineReason,
+            String completionNote,
             dev.gymmetry.enums.NotHeldReason notHeldReason,
             dev.gymmetry.enums.CancellationReason cancellationReason) {
         this.status = status;
@@ -183,6 +189,7 @@ public class Session {
         this.trainerStatusOverridden = overridden;
         this.overrideReason = overrideReason;
         this.declineReason = declineReason;
+        this.completionNote = completionNote;
         this.notHeldReason = notHeldReason;
         this.cancellationReason = cancellationReason;
     }

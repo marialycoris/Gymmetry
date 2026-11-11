@@ -69,11 +69,14 @@ CREATE TABLE IF NOT EXISTS sessions (
     trainer_overridden      BOOLEAN NOT NULL DEFAULT FALSE,
     override_reason         TEXT,
     decline_reason          TEXT,
+    completion_note         TEXT,
     not_held_reason         VARCHAR(30),
     cancellation_reason     VARCHAR(30),
     created_at              TIMESTAMP NOT NULL,
     updated_at              TIMESTAMP NOT NULL
 );
+
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS completion_note TEXT;
 
 CREATE TABLE IF NOT EXISTS payments (
     id              SERIAL PRIMARY KEY,

@@ -260,13 +260,35 @@ public class Gym {
     }
 
     public void trainerMarkPresent(int sessionId, Trainer trainer) {
+        trainerMarkPresent(sessionId, trainer, null);
+    }
+
+    public void trainerMarkPresent(int sessionId, Trainer trainer, String note) {
         Session s = findSession(sessionId);
         requireOwnership(s, trainer);
-        s.markMemberPresent();
+        s.markMemberPresent(note);
         sessionRepo.update(s);
 
         // Create attendance record
         AttendanceRecord att = new AttendanceRecord(0, s.getMember(), trainer, s);
+        attendanceRepo.save(att);
+    }
+
+    /** API flow: the trainer of the session accepts or declines a request (no login context). */
+    public void respondToSession(int sessionId, boolean accept, String reason) {
+        Session s = findSession(sessionId);
+        if (accept) s.accept();
+        else s.decline(reason);
+        sessionRepo.update(s);
+    }
+
+    /** API flow: the trainer of the session marks it completed with an optional note. */
+    public void completeSession(int sessionId, String note) {
+        Session s = findSession(sessionId);
+        s.markMemberPresent(note);
+        sessionRepo.update(s);
+
+        AttendanceRecord att = new AttendanceRecord(0, s.getMember(), s.getTrainer(), s);
         attendanceRepo.save(att);
     }
 
