@@ -92,9 +92,9 @@ export const api = {
   // PUT /sessions/:id/reassign  { trainerId }  (admin, declined sessions only)
   reassignSession: (id: number, trainerId: number) =>
     call(() => mock.reassignSession(id, trainerId), () => http<void>(`/sessions/${id}/reassign`, send('PUT', { trainerId }))),
-  // PUT /sessions/:id/complete  (trainer; also records member attendance)
-  completeSession: (id: number) =>
-    call(() => mock.completeSession(id), () => http<void>(`/sessions/${id}/complete`, send('PUT'))),
+  // PUT /sessions/:id/complete  (trainer; also records member attendance; optional note)
+  completeSession: (id: number, note?: string) =>
+    call(() => mock.completeSession(id, note), () => http<void>(`/sessions/${id}/complete`, send('PUT', { note }))),
   // PUT /sessions/:id/attendance  { status }  (admin override)
   overrideAttendance: (id: number, status: 'COMPLETED' | 'NOT_HELD') =>
     call(() => mock.overrideAttendance(id, status), () => http<void>(`/sessions/${id}/attendance`, send('PUT', { status }))),
