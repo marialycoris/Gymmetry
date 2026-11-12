@@ -19,7 +19,6 @@ import { Loading, Notice, Stat } from '../../components/Widgets';
 
 const NAV: NavItem[] = [
   { id: 'overview', label: 'Overview' },
-  { id: 'membership', label: 'My membership' },
   { id: 'sessions', label: 'My sessions' },
   { id: 'payments', label: 'Payments' },
 ];
@@ -96,8 +95,8 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
             </>
           )}
         </Card>
-        <Card title="My membership" icon={<IdCard className="h-5 w-5" />} headerTone="maroon" action={seeMore('membership')} className="h-full flex flex-col" bodyClassName="flex flex-1 flex-col justify-center">
-          <ul className="space-y-3 text-sm">
+        <Card title="My membership" icon={<IdCard className="h-5 w-5" />} headerTone="maroon" className="h-full flex flex-col" bodyClassName="flex flex-1 flex-col">
+          <ul className="flex flex-col gap-3 text-sm">
             <li className="flex items-center justify-between gap-2"><span className="text-gray-500">Plan</span><span className="font-semibold">{pretty(m.plan)}</span></li>
             <li className="flex items-center justify-between gap-2"><span className="text-gray-500">Status</span><Badge value={m.status} /></li>
             <li className="flex items-center justify-between gap-2"><span className="text-gray-500">Days left</span><span className="font-semibold">{Math.max(left, 0)}</span></li>
@@ -115,7 +114,6 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
                 : m.status === 'EXPIRED' ? `Your membership expired on ${fmtDate(m.expiresAt)}. Renew at the front desk to book sessions again.`
                 : `Your membership ends in ${left} day${left === 1 ? '' : 's'}. Renew at the front desk to keep training.`}
             </span>
-            {membershipAlert && <Button size="sm" variant="secondary" onClick={() => go('membership')}>View</Button>}
           </li>
           <li className="flex items-center justify-between gap-4">
             <span>{pending.length === 0 ? 'No requests waiting for a trainer’s answer.' : `${pending.length} request${pending.length > 1 ? 's' : ''} waiting for a trainer’s answer.`}</span>
@@ -127,30 +125,6 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
           </li>
         </ul>
       </Card>
-    </>
-  );
-}
-
-function Membership({ memberId }: { memberId: number }) {
-  const member = useAsync(() => api.getMember(memberId), [memberId]);
-  const sessions = useAsync(() => api.getSessions({ memberId }), [memberId]);
-  if (member.loading || sessions.loading) return <Loading />;
-  const m = member.data;
-  if (!m) return <Notice tone="error">{member.error || 'Could not load your membership.'}</Notice>;
-  const left = daysUntil(m.expiresAt);
-  const attended = (sessions.data ?? []).filter((s) => s.status === 'COMPLETED').length;
-
-  return (
-    <>
-      {m.status === 'DISABLED' && <Notice tone="error">Your account was disabled after six months without activity. Visit the front desk to reactivate it.</Notice>}
-      {m.status === 'EXPIRED' && <Notice tone="warn">Your membership expired on {fmtDate(m.expiresAt)}. Renew at the front desk to book sessions again.</Notice>}
-      {m.status === 'ACTIVE' && left <= 7 && <Notice tone="warn">Your membership ends in {left} day{left === 1 ? '' : 's'}. Renew at the front desk to keep training.</Notice>}
-      <div className="grid sm:grid-cols-3 gap-4">
-        <Stat label="Plan" value={pretty(m.plan)} />
-        <Stat label="Days left" value={Math.max(left, 0)} hint={`Expires ${fmtDate(m.expiresAt)}`} />
-        <Stat label="Sessions attended" value={attended} hint={`Last visit ${fmtDate(m.lastAttendance)}`} />
-      </div>
-      <Card title="Account"><p>Status: <Badge value={m.status} /> &nbsp; Member since {fmtDate(m.joinedAt)}</p></Card>
     </>
   );
 }
@@ -253,7 +227,7 @@ function MyPayments({ memberId }: { memberId: number }) {
   return (
     <>
       {error && <Notice tone="error">{error}</Notice>}
-      <Card>
+      <Card title="My payments" headerTone="maroon">
         <Table headers={['Date', 'Method', 'Amount']} isEmpty={list.length === 0} emptyText="No payments on record." pageSize={5} itemLabel="payments">
           {list.map((p) => (
             <tr key={p.id}>
@@ -275,7 +249,6 @@ export function MemberDashboard() {
   return (
     <AppShell nav={NAV} active={tab} onNavigate={setTab}>
       {tab === 'overview' && <Overview go={setTab} memberId={memberId} />}
-      {tab === 'membership' && <Membership memberId={memberId} />}
       {tab === 'sessions' && <MySessions memberId={memberId} />}
       {tab === 'payments' && <MyPayments memberId={memberId} />}
     </AppShell>
