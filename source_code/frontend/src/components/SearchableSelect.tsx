@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 
 interface SearchableSelectProps {
   label: string;
-  options: { value: string | number; label: string }[];
+  options: { value: string | number; label: string; description?: string }[];
   value: string | number;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -16,8 +16,9 @@ export function SearchableSelect({ label, options, value, onChange, placeholder 
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
   const selected = options.find((o) => String(o.value) === String(value));
-  const filtered = query.trim()
-    ? options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase()))
+  const q = query.trim().toLowerCase();
+  const filtered = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q) || o.description?.toLowerCase().includes(q))
     : options;
 
   useEffect(() => {
@@ -68,9 +69,10 @@ export function SearchableSelect({ label, options, value, onChange, placeholder 
                 <button
                   type="button"
                   onClick={() => choose(o.value)}
-                  className={`block w-full px-4 py-3 text-left text-sm font-semibold border-b border-gray-100 last:border-b-0 hover:bg-gray-50 ${String(o.value) === String(value) ? 'bg-red-50 text-gym-crimson' : 'text-gym-black'}`}
+                  className={`block w-full px-4 py-3 text-left border-b border-gray-100 last:border-b-0 hover:bg-gray-50 ${String(o.value) === String(value) ? 'bg-red-50 text-gym-crimson' : 'text-gym-black'}`}
                 >
-                  {o.label}
+                  <span className="block text-sm font-semibold">{o.label}</span>
+                  {o.description && <span className="block text-xs text-gray-500">{o.description}</span>}
                 </button>
               </li>
             ))}
