@@ -102,6 +102,16 @@ public class Session {
         touch();
     }
 
+    public void reassign(Trainer newTrainer) {
+        requireStatus(SessionStatus.DECLINED, "reassign");
+        if (newTrainer == null)
+            throw new IllegalArgumentException("New trainer required");
+        this.trainer = newTrainer;
+        this.status = SessionStatus.REQUESTED;
+        this.declineReason = null;
+        touch();
+    }
+
     public void memberCancel() {
         if (status != SessionStatus.REQUESTED && status != SessionStatus.SCHEDULED
                 && status != SessionStatus.DECLINED) {

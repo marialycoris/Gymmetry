@@ -108,6 +108,13 @@ public class Gym {
         authService.renameUsername(user, newUsername);
     }
 
+    public void setMemberPassword(int id, String newPassword) {
+        Member m = findMember(id);
+        User user = authService.findByPerson(m.getRole(), m.getId());
+        if (user == null) throw new IllegalStateException("No login account for member " + id);
+        authService.adminSetPassword(user, newPassword);
+    }
+
     // ============================================================
     // TRAINERS
     // ============================================================
@@ -149,6 +156,13 @@ public class Gym {
     public User findTrainerUser(int trainerId) {
         Trainer t = findTrainer(trainerId);
         return authService.findByPerson(t.getRole(), t.getId());
+    }
+
+    public void setTrainerPassword(int trainerId, String newPassword) {
+        Trainer t = findTrainer(trainerId);
+        User user = authService.findByPerson(t.getRole(), t.getId());
+        if (user == null) throw new IllegalStateException("No login account for trainer " + trainerId);
+        authService.adminSetPassword(user, newPassword);
     }
 
     public Trainer findTrainer(int id) {
@@ -321,6 +335,23 @@ public class Gym {
             throw new IllegalStateException("Cannot cancel — less than 48h remain or session not editable");
         }
         s.memberCancel();
+        sessionRepo.update(s);
+    }
+
+    /** API flow: an admin reassigns a declined session to another trainer. */
+    public void reassignSession(int sessionId, Trainer newTrainer) {
+        Session s = findSession(sessionId);
+        if (s.getStatus() != SessionStatus.DECLINED) {
+            throw new IllegalStateException("Only declined sessions can be reassigned");
+        }
+        if (newTrainer == null) throw new IllegalArgumentException("New trainer required");
+        if (s.getTrainer().getId() == newTrainer.getId()) {
+            throw new IllegalStateException("Session is already assigned to this trainer");
+        }
+        if (trainerHasConflict(newTrainer, s.getScheduledAt())) {
+            throw new IllegalStateException("Trainer already has a session at that time");
+        }
+        s.reassign(newTrainer);
         sessionRepo.update(s);
     }
 

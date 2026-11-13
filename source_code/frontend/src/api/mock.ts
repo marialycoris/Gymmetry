@@ -3,6 +3,7 @@
 import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
 import { METHODS, PLANS, STATUSES } from '../lib/types';
 import type { User } from '../context/AuthContext';
+import { passwordError } from '../lib/password';
 
 const iso = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toLocaleDateString('en-CA'); };
 const since = (date: string) => Math.round((new Date(iso()).getTime() - new Date(date).getTime()) / 864e5);
@@ -80,7 +81,8 @@ export const mock = {
   getMember: (id: number) => ({ ...member(id) }),
   registerMember(i: MemberRegistrationInput) {
     if (members.some((m) => m.username === i.username)) throw new Error('That username is already taken.');
-    if (i.tempPassword.length < 8) throw new Error('Temporary password must be at least 8 characters.');
+    const pwProblem = passwordError(i.tempPassword);
+    if (pwProblem) throw new Error(pwProblem);
     const m: Member = {
       id: ++seq,
       name: `${i.firstName} ${i.lastName}`.trim(),
@@ -143,6 +145,17 @@ export const mock = {
     const m = member(id);
     m.status = active ? (since(m.expiresAt) > 0 ? 'EXPIRED' : 'ACTIVE') : 'DISABLED';
   },
+  setMemberPassword(id: number, password: string): void {
+    const problem = passwordError(password);
+    if (problem) throw new Error(problem);
+    const m = member(id);
+    let user = Object.values(USERS).find((u) => u.role === 'MEMBER' && u.personId === id);
+    if (!user) {
+      user = { username: m.username, role: 'MEMBER', personId: id, name: m.name };
+      USERS[m.username.toLowerCase()] = user;
+    }
+    user.mustChangePassword = true;
+  },
 
   getPayments: (memberId?: number) => payments.filter((p) => !memberId || p.memberId === memberId).sort((a, b) => b.paidAt.localeCompare(a.paidAt)),
   recordPayment(i: { memberId: number; amount: number; method: PayMethod }) {
@@ -159,7 +172,8 @@ export const mock = {
       || trainers.some((t) => t.username === i.username)
       || !!USERS[i.username.toLowerCase()];
     if (taken) throw new Error('That username is already taken.');
-    if (i.tempPassword.length < 8) throw new Error('Temporary password must be at least 8 characters.');
+    const pwProblem = passwordError(i.tempPassword);
+    if (pwProblem) throw new Error(pwProblem);
     const t: Trainer = {
       id: ++seq,
       name: `${i.firstName} ${i.lastName}`.trim(),
@@ -189,6 +203,17 @@ export const mock = {
     return { ...t };
   },
   setTrainerActive(id: number, active: boolean): void { trainer(id).status = active ? 'ACTIVE' : 'DISABLED'; },
+  setTrainerPassword(id: number, password: string): void {
+    const problem = passwordError(password);
+    if (problem) throw new Error(problem);
+    const t = trainer(id);
+    let user = Object.values(USERS).find((u) => u.role === 'TRAINER' && u.personId === id);
+    if (!user) {
+      user = { username: t.username, role: 'TRAINER', personId: id, name: t.name };
+      USERS[t.username.toLowerCase()] = user;
+    }
+    user.mustChangePassword = true;
+  },
   getSlots: (trainerId: number, date: string) => SLOTS.map((time) => ({ time, available: !slotTaken(trainerId, date, time) })),
   bookSession(i: { memberId: number; trainerId: number; date: string; time: string }) {
     if (member(i.memberId).status !== 'ACTIVE') throw new Error('Only active members can book sessions.');

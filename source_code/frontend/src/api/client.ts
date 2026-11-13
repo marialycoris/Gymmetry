@@ -7,7 +7,7 @@ const API_URL = 'http://localhost:8080/api';
 // TODO: set to false once the backend is connected. While true, every call below
 // returns demo data from ./mock.ts. Demo logins: admin, trainer, member, newbie (any password).
 // Disabled: now calling the real backend/database below.
-export const USE_MOCK = false;
+export const USE_MOCK = true;
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, { headers: { 'Content-Type': 'application/json' }, ...init });
@@ -54,6 +54,9 @@ export const api = {
   // PUT /members/:id/status  { active }  (manual disable / reactivate)
   setMemberActive: (id: number, active: boolean) =>
     call(() => mock.setMemberActive(id, active), () => http<void>(`/members/${id}/status`, send('PUT', { active }))),
+  // PUT /members/:id/password  { password }  (admin sets a temp password; forced change on next login)
+  setMemberPassword: (id: number, password: string) =>
+    call(() => mock.setMemberPassword(id, password), () => http<void>(`/members/${id}/password`, send('PUT', { password }))),
 
   // ---------- Payments ----------
   // GET /payments?memberId=
@@ -77,6 +80,9 @@ export const api = {
   // PUT /trainers/:id/status  { active }  (soft delete / reactivate)
   setTrainerActive: (id: number, active: boolean) =>
     call(() => mock.setTrainerActive(id, active), () => http<void>(`/trainers/${id}/status`, send('PUT', { active }))),
+  // PUT /trainers/:id/password  { password }  (admin sets a temp password; forced change on next login)
+  setTrainerPassword: (id: number, password: string) =>
+    call(() => mock.setTrainerPassword(id, password), () => http<void>(`/trainers/${id}/password`, send('PUT', { password }))),
   // GET /trainers/:id/slots?date=yyyy-mm-dd  (server marks taken slots as available:false)
   getSlots: (trainerId: number, date: string) =>
     call(() => mock.getSlots(trainerId, date), () => http<Slot[]>(`/trainers/${trainerId}/slots${qs({ date })}`)),

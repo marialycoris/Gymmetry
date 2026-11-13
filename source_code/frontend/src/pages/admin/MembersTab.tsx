@@ -3,6 +3,7 @@ import { api } from '../../api/client';
 import { useAsync } from '../../hooks/useAsync';
 import { GENDERS, PLANS, type Gender, type Member, type MemberRegistrationInput, type MemberStatus, type Plan } from '../../lib/types';
 import { daysUntil, fmtDate } from '../../lib/format';
+import { PASSWORD_HINT, passwordError } from '../../lib/password';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
@@ -35,6 +36,8 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const problem = passwordError(f.tempPassword);
+    if (problem) { setErr(problem); return; }
     setBusy(true); setErr('');
     try { await api.registerMember(f); onDone(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
   };
@@ -54,7 +57,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       <Input label="Medical condition" value={f.medicalCondition} onChange={set('medicalCondition')} placeholder="Diabetes, Hypertension, etc. (leave blank if none)" />
       <Input label="Username" value={f.username} onChange={set('username')} required />
       <Input label="Temporary password" type="text" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
-      <p className="text-xs text-gray-500 -mt-2 mb-4">The member must change this the first time they log in.</p>
+      <p className="text-xs text-gray-500 -mt-2 mb-4">{PASSWORD_HINT} The member must change it on first login.</p>
       <Select label="Plan" value={f.plan} onChange={set('plan')} options={planOptions} />
       <div className="flex justify-end"><Button type="submit" isLoading={busy}>Register member</Button></div>
     </form>

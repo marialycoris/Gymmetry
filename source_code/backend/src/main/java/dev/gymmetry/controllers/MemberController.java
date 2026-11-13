@@ -132,6 +132,19 @@ public class MemberController {
         }
     }
 
+    public record PasswordRequest(String password) {}
+
+    // Admin sets a temporary password; the member must change it on next login.
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> setMemberPassword(@PathVariable int id, @RequestBody PasswordRequest req) {
+        try {
+            gym.setMemberPassword(id, req.password());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // Record Payment for a member (Admin)
     public record PaymentRequest(String plan, double amount, String method) {}
 

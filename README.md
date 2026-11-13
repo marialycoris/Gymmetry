@@ -32,37 +32,61 @@ By combining centralized record management with engagement insights and more fle
 
 ## Key Features
 
+> **Progress:** **Implemented** = working end to end · **Partial** = usable in the web UI/mock data but some backend or automation is still missing · **Not started** = not yet built.
+
 ### 1. Authentication & User Management
-Role-based login for Admin, Trainer, and Member accounts, with password hashing using BCrypt and a first-login password change requirement.
+**Status:** Implemented
+
+Role-based login for Admin, Trainer, and Member accounts. Passwords follow a format policy (at least 8 characters with an uppercase letter, a lowercase letter, a number, and a special character) and are stored using BCrypt hashing. Newly registered Trainer and Member accounts receive a temporary password and must change it on first login. If a user forgets their password, an Admin can open the user's profile and set a new temporary password, which again forces a change on the next login. Admins can also onboard trainers and manage their accounts.
 
 ### 2. Membership Management
+**Status:** Implemented
+
 Member registration, plan assignment (Basic / Premium / VIP), activation, renewal, expiry tracking, and automatic account disablement after six months of inactivity.
 
 ### 3. Payment Recording
+**Status:** Implemented
+
 Admin records payments through Cash, Card, or E-wallet, with payment history per member and revenue totals for administrative reporting.
 
 ### 4. Session Booking
+**Status:** Implemented
+
 Members select trainers and available time slots. The system validates availability and prevents conflicting bookings.
 
 ### 5. Trainer Response Workflow
+**Status:** Implemented
+
 Trainers review session requests and accept or decline them, with a reason required for declined requests.
 
 ### 6. Decline Review & Reassignment
+**Status:** Implemented
+
 Administrators review declined sessions and may reassign them to another trainer to help members secure an alternative schedule.
 
 ### 7. Attendance Tracking
+**Status:** Partial — Trainer completion and attendance recording work. Admin override works in the web UI and mock data, but the backend `PUT /api/sessions/{id}/attendance` endpoint is not implemented yet.
+
 Trainers mark sessions as completed, which automatically records member attendance. Administrators can override trainer attendance when necessary.
 
 ### 8. Deadline Sweep
+**Status:** Partial — `NOT_HELD` flagging logic exists, but the sweep is triggered manually from the console menu rather than by a scheduled midnight job in the web app.
+
 Sessions that have not been marked by the trainer by midnight are automatically flagged as `NOT_HELD`, and the trainer is marked absent according to the system's attendance rules.
 
 ### 9. Reports
+**Status:** Implemented
+
 Generate reports covering revenue totals, active and inactive members, sessions by status, members per membership plan, and trainer attendance.
 
 ### 10. Role-Based Dashboards
+**Status:** Implemented — Role-based routing is implemented in the UI; API endpoints are not yet protected by server-side authorization.
+
 Each role has access to the features and actions permitted by its assigned permissions.
 
 ### 11. Gymmetry Pulse — Member Engagement Insights
+**Status:** Implemented
+
 Analyze member attendance history, booking activity, and membership status to identify changes in participation and potential follow-up needs.
 
 Key capabilities:
@@ -75,6 +99,8 @@ Key capabilities:
 Pulse provides rule-based indicators to support staff decisions. A flagged member is not automatically considered likely to cancel their membership, and staff can review the available context before taking action.
 
 ### 12. Gymmetry FairSlot — Flexible Session Booking
+**Status:** Not started — Waitlists, availability notifications, and alternative-slot suggestions are not implemented yet.
+
 Improve session availability and help members find suitable alternatives when their preferred time slots are unavailable.
 
 Key capabilities:
@@ -91,10 +117,11 @@ FairSlot aims to make better use of available trainer schedules while giving mem
 | Layer | Technology |
 |---|---|
 | Backend | Java 17 |
+| Backend Framework | Spring Boot 3 (REST API) |
 | Build Tool | Maven |
-| Database | PostgreSQL 17 |
-| Security | BCrypt (Spring Security Crypto) |
-| Frontend (planned) | React + TypeScript + Tailwind CSS |
+| Database | PostgreSQL 17 (accessed via JDBC) |
+| Password Hashing | BCrypt (`spring-security-crypto`) |
+| Frontend | React 19 + TypeScript + Tailwind CSS 4 (Vite) |
 | Version Control | Git + GitHub |
 
 ## Project Structure
@@ -102,17 +129,32 @@ FairSlot aims to make better use of available trainer schedules while giving mem
 gymmetry/
 ├── README.md
 ├── source_code/
+│   ├── REQUIREMENTS.md
 │   ├── backend/
-│   │   ├── src/
-│   │   ├── target/
 │   │   ├── pom.xml
-│   └── REQUIREMENTS.md 
-├── docs/
+│   │   └── src/main/
+│   │       ├── java/dev/gymmetry/
+│   │       │   ├── controllers/   # REST endpoints (auth, members, trainers, sessions, payments, reports)
+│   │       │   ├── service/       # Gym, AuthService, PasswordPolicy
+│   │       │   ├── repository/    # JDBC data access
+│   │       │   ├── domain/        # Person, Member, Trainer, Admin, Session, Payment, ...
+│   │       │   ├── enums/
+│   │       │   └── db/            # Database connection + schema initializer
+│   │       └── resources/sql/schema.sql
+│   └── frontend/
+│       ├── package.json
+│       └── src/
+│           ├── api/               # API client + demo mock data
+│           ├── components/        # Shared UI components
+│           ├── context/           # Auth context
+│           ├── lib/               # Types, formatting, password policy
+│           └── pages/             # Login, Admin, Trainer, Member dashboards
 ├── UML_diagrams/
 │   ├── ActivityDiagram.png
 │   ├── ClassDiagram.png
 │   ├── SequenceDiagram.png
-│   ├── UseCase.png
+│   └── UseCase.png
+├── .gitattributes
 └── .gitignore
 ```
 
@@ -122,26 +164,39 @@ gymmetry/
 - Java 17 or later
 - Maven 3.8+
 - PostgreSQL 17
+- Node.js 18+ and npm
 
 ### Database Setup
-1. Start PostgreSQL
-2. Create a database named `gymmetry`
-3. Update credentials in `source_code/backend/src/main/java/dev/gymmetry/db/Database.java` if needed
+1. Start PostgreSQL.
+2. Create a database named `gymmetry`.
+3. The backend connects to `jdbc:postgresql://127.0.0.1:5433/gymmetry`. If your setup differs, update the URL, user, and password in `source_code/backend/src/main/java/dev/gymmetry/db/Database.java`.
 
 ### Backend
 ```bash
 cd source_code/backend
 mvn clean compile
-mvn exec:java -Dexec.mainClass="dev.gymmetry.GymmetryApplication"
+mvn spring-boot:run
+```
 
-The schema is created automatically on first run.
+The schema is created automatically on first run, and the default admin account is seeded if it does not exist.
 
 Default admin credentials:
 
-Username: admin
+- **Username:** `admin`
+- **Password:** `admin123`
 
-Password: admin123
+The REST API is served at `http://localhost:8080/api`.
+
+### Frontend
+```bash
+cd source_code/frontend
+npm install
+npm run dev
 ```
+
+The Vite dev server starts at `http://localhost:5173`.
+
+> **Demo mode:** `source_code/frontend/src/api/client.ts` currently has `USE_MOCK = true`, so the UI runs on in-memory demo data (`src/api/mock.ts`) instead of the backend. Set `USE_MOCK = false` to connect to the Spring Boot API. In demo mode you can log in as `admin`, `trainer`, `member`, or `newbie` (first-login flow) with any non-empty password.
 
 ### UML Diagrams
 

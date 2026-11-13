@@ -30,6 +30,9 @@ public class AuthService {
         if (userRepo.findByUsername(username) != null) {
             throw new DuplicateUserException(username);
         }
+        if (requirePasswordChange) {
+            PasswordPolicy.validate(password);
+        }
         String hash = encoder.encode(password);
         User user = new User(username, hash, person.getRole(), person);
         if (requirePasswordChange) {
@@ -67,19 +70,23 @@ public class AuthService {
     }
 
     public void completePasswordChange(User user, String newPassword) {
-        if (newPassword == null || newPassword.length() < 6) {
-            throw new IllegalArgumentException("Password must be at least 6 characters");
-        }
+        PasswordPolicy.validate(newPassword);
         user.setPasswordHash(encoder.encode(newPassword));
         user.setMustChangePassword(false);
         userRepo.update(user);
     }
 
-    public String adminResetPassword(User user) {
-        String temp = "temp" + (int) (Math.random() * 900000 + 100000);
-        user.setPasswordHash(encoder.encode(temp));
+    /** Admin sets a temporary password; the user must change it on their next login. */
+    public void adminSetPassword(User user, String newPassword) {
+        PasswordPolicy.validate(newPassword);
+        user.setPasswordHash(encoder.encode(newPassword));
         user.setMustChangePassword(true);
         userRepo.update(user);
+    }
+
+    public String adminResetPassword(User user) {
+        String temp = "Temp@" + (int) (Math.random() * 900000 + 100000);
+        adminSetPassword(user, temp);
         return temp;
     }
 

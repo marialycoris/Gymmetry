@@ -7,6 +7,7 @@ import { Input } from './Input';
 import { Select } from './Select';
 import { LoadingOverlay } from './Spinner';
 import { Notice } from './Widgets';
+import { PasswordReset } from './PasswordReset';
 
 const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).toLowerCase() }));
 
@@ -54,8 +55,9 @@ export function MemberProfile({ member, onSaved }: MemberProfileProps) {
   };
 
   return (
-    <form onSubmit={submit} className="relative">
-      <LoadingOverlay show={busy} label="Saving changes…" />
+    <>
+      <form onSubmit={submit} className="relative">
+        <LoadingOverlay show={busy} label="Saving changes…" />
       {err && <Notice tone="error">{err}</Notice>}
       <div className="grid grid-cols-2 gap-x-4">
         <Input label="First name" value={f.firstName} onChange={set('firstName')} disabled={!editing} required />
@@ -81,6 +83,8 @@ export function MemberProfile({ member, onSaved }: MemberProfileProps) {
           )}
         </div>
       </div>
-    </form>
+      </form>
+      <PasswordReset name={member.name} roleLabel="member" onSubmit={(password) => api.setMemberPassword(member.id, password)} />
+    </>
   );
 }

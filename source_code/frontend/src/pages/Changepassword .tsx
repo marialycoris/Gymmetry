@@ -5,6 +5,7 @@ import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
 import { Notice } from '../components/Widgets';
+import { PASSWORD_HINT, passwordError } from '../lib/password';
 
 // Shown instead of the dashboard until the user replaces their temporary password.
 export function ChangePassword() {
@@ -17,7 +18,8 @@ export function ChangePassword() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (password.length < 8) return setError('Use at least 8 characters.');
+    const problem = passwordError(password);
+    if (problem) return setError(problem);
     if (password !== confirm) return setError('The two passwords do not match.');
     setBusy(true);
     try {
@@ -38,6 +40,7 @@ export function ChangePassword() {
         {error && <Notice tone="error">{error}</Notice>}
         <form onSubmit={submit}>
           <Input label="New password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          <p className="text-xs text-gray-500 -mt-2 mb-4">{PASSWORD_HINT}</p>
           <Input label="Confirm new password" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} required />
           <div className="flex gap-2 mt-2">
             <Button type="submit" isLoading={busy}>Save password</Button>

@@ -118,6 +118,21 @@ public class SessionController {
         }
     }
 
+    // Admin reassigns a declined session: { trainerId }
+    public record ReassignRequest(Integer trainerId) {}
+
+    @PutMapping("/{id}/reassign")
+    public ResponseEntity<?> reassignSession(@PathVariable int id, @RequestBody ReassignRequest req) {
+        try {
+            if (req.trainerId() == null) throw new IllegalArgumentException("trainerId is required");
+            Trainer t = gym.findTrainer(req.trainerId());
+            gym.reassignSession(id, t);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // ---- helpers ----
 
     private SessionDto toDto(Session s) {

@@ -141,11 +141,10 @@ public class AdminMenu {
         }
         int id = in.readInt("\nSession ID to act on (0 to skip): ");
         if (id == 0) return;
-        Session s = gym.findSession(id);
         int newTrainerId = in.readInt("New trainer ID (0 to cancel session instead): ");
         if (newTrainerId != 0) {
             Trainer newTrainer = gym.findTrainer(newTrainerId);
-            s.reschedule(s.getScheduledAt(), newTrainer);
+            gym.reassignSession(id, newTrainer);
             System.out.println("  ✓ Reassigned to " + newTrainer.getName());
         } else {
             gym.adminMarkTrainerAbsent(id, admin, "Admin approved decline");

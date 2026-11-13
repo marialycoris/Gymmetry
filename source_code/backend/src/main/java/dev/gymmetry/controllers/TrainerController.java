@@ -89,6 +89,19 @@ public class TrainerController {
         }
     }
 
+    public record PasswordRequest(String password) {}
+
+    // Admin sets a temporary password; the trainer must change it on next login.
+    @PutMapping("/{id}/password")
+    public ResponseEntity<?> setTrainerPassword(@PathVariable int id, @RequestBody PasswordRequest req) {
+        try {
+            gym.setTrainerPassword(id, req.password());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     private TrainerDto toDto(Trainer t) {
         User user = gym.findTrainerUser(t.getId());
         String specialty = t.getSpecialties().isEmpty() ? "" : t.getSpecialties().get(0);
