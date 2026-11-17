@@ -11,13 +11,18 @@ public class AttendanceRecord {
     private final LocalDateTime recordedAt;
 
     public AttendanceRecord(int id, Member member, Trainer trainer, Session session) {
+        this(id, member, trainer, session, LocalDateTime.now());
+    }
+
+    public AttendanceRecord(int id, Member member, Trainer trainer, Session session,
+                            LocalDateTime recordedAt) {
         if (member == null || trainer == null || session == null)
             throw new IllegalArgumentException("Member, trainer, session required");
         this.id = id;
         this.member = member;
         this.trainer = trainer;
         this.session = session;
-        this.recordedAt = LocalDateTime.now();
+        this.recordedAt = recordedAt == null ? LocalDateTime.now() : recordedAt;
     }
 
     public int getId() { return id; }

@@ -165,6 +165,21 @@ public class Session {
         touch();
     }
 
+    public void adminOverrideAttendance(SessionStatus outcome) {
+        if (outcome != SessionStatus.COMPLETED && outcome != SessionStatus.NOT_HELD) {
+            throw new IllegalArgumentException("Attendance can only be COMPLETED or NOT_HELD");
+        }
+        if (status != SessionStatus.COMPLETED && status != SessionStatus.NOT_HELD) {
+            throw new IllegalStateException("Cannot override attendance — session has no outcome yet");
+        }
+        this.status = outcome;
+        this.trainerStatus = TrainerSessionStatus.PRESENT;
+        this.notHeldReason = outcome == SessionStatus.NOT_HELD
+                ? (notHeldReason == null ? NotHeldReason.MEMBER_NO_SHOW : notHeldReason)
+                : null;
+        touch();
+    }
+
     // --- Helpers ---
 
     private void requireStatus(SessionStatus expected, String action) {

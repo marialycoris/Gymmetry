@@ -283,9 +283,7 @@ public class Gym {
         s.markMemberPresent(note);
         sessionRepo.update(s);
 
-        // Create attendance record
-        AttendanceRecord att = new AttendanceRecord(0, s.getMember(), trainer, s);
-        attendanceRepo.save(att);
+        recordAttendance(s);
     }
 
     /** API flow: the trainer of the session accepts or declines a request (no login context). */
@@ -302,8 +300,25 @@ public class Gym {
         s.markMemberPresent(note);
         sessionRepo.update(s);
 
-        AttendanceRecord att = new AttendanceRecord(0, s.getMember(), s.getTrainer(), s);
-        attendanceRepo.save(att);
+        recordAttendance(s);
+    }
+
+    public void overrideAttendance(int sessionId, SessionStatus outcome) {
+        Session s = findSession(sessionId);
+        s.adminOverrideAttendance(outcome);
+        sessionRepo.update(s);
+
+        if (outcome == SessionStatus.COMPLETED) {
+            recordAttendance(s);
+        } else {
+            attendanceRepo.deleteBySession(s.getId());
+        }
+    }
+
+    private void recordAttendance(Session s) {
+        if (!attendanceRepo.existsBySession(s.getId())) {
+            attendanceRepo.save(new AttendanceRecord(0, s.getMember(), s.getTrainer(), s));
+        }
     }
 
     public void trainerMarkNoShow(int sessionId, Trainer trainer) {

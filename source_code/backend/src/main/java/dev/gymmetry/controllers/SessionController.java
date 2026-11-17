@@ -92,6 +92,25 @@ public class SessionController {
         }
     }
 
+    public record AttendanceRequest(String status) {}
+
+    @PutMapping("/{id}/attendance")
+    public ResponseEntity<?> overrideAttendance(@PathVariable int id, @RequestBody AttendanceRequest req) {
+        try {
+            if (req.status() == null || req.status().isBlank()) {
+                throw new IllegalArgumentException("status is required");
+            }
+            SessionStatus outcome = SessionStatus.valueOf(req.status().toUpperCase());
+            if (outcome != SessionStatus.COMPLETED && outcome != SessionStatus.NOT_HELD) {
+                throw new IllegalArgumentException("Attendance status must be COMPLETED or NOT_HELD");
+            }
+            gym.overrideAttendance(id, outcome);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // Trainer accepts (older contract, kept for compatibility)
     @PostMapping("/{id}/accept")
     public ResponseEntity<?> acceptSession(@PathVariable int id, @RequestParam int trainerId) {

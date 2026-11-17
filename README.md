@@ -65,14 +65,14 @@ Trainers review session requests and accept or decline them, with a reason requi
 Administrators review declined sessions and may reassign them to another trainer to help members secure an alternative schedule.
 
 ### 7. Attendance Tracking
-**Status:** Partial — Trainer completion and attendance recording work. Admin override works in the web UI and mock data, but the backend `PUT /api/sessions/{id}/attendance` endpoint is not implemented yet.
+**Status:** Implemented
 
-Trainers mark sessions as completed, which automatically records member attendance. Administrators can override trainer attendance when necessary.
+Trainers mark sessions as completed, which automatically records member attendance. Administrators can override a completed or not-held session through `PUT /api/sessions/{id}/attendance`; the backend keeps the member attendance record in sync by adding or removing it as needed.
 
 ### 8. Deadline Sweep
-**Status:** Partial — `NOT_HELD` flagging logic exists, but the sweep is triggered manually from the console menu rather than by a scheduled midnight job in the web app.
+**Status:** Implemented
 
-Sessions that have not been marked by the trainer by midnight are automatically flagged as `NOT_HELD`, and the trainer is marked absent according to the system's attendance rules.
+Sessions that have not been marked by the trainer by midnight are automatically flagged as `NOT_HELD`, and the trainer is marked absent according to the system's attendance rules. The backend runs the sweep automatically at midnight and once on startup to catch anything that was missed while the server was offline.
 
 ### 9. Reports
 **Status:** Implemented

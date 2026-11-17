@@ -6,7 +6,7 @@ import dev.gymmetry.domain.Session;
 import dev.gymmetry.domain.Trainer;
 
 import java.sql.*;
-// import java.time.LocalDateTime;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,6 +23,7 @@ public class AttendanceRepository {
     }
 
     public void save(AttendanceRecord a) {
+        if (existsBySession(a.getSession().getId())) return;
         String sql = "INSERT INTO attendance (member_id, trainer_id, session_id, recorded_at) VALUES (?,?,?,?)";
         try (Connection conn = Database.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -49,13 +50,48 @@ public class AttendanceRepository {
         return result;
     }
 
+    public AttendanceRecord findBySession(int sessionId) {
+        String sql = "SELECT * FROM attendance WHERE session_id = ? ORDER BY id LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, sessionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? mapRow(rs) : null;
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to find attendance", e);
+        }
+    }
+
+    public boolean existsBySession(int sessionId) {
+        String sql = "SELECT 1 FROM attendance WHERE session_id = ? LIMIT 1";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, sessionId);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to check attendance", e);
+        }
+    }
+
+    public void deleteBySession(int sessionId) {
+        String sql = "DELETE FROM attendance WHERE session_id = ?";
+        try (Connection conn = Database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, sessionId);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            throw new RuntimeException("Failed to delete attendance", e);
+        }
+    }
+
     private AttendanceRecord mapRow(ResultSet rs) throws SQLException {
         Member m = memberRepo.findById(rs.getInt("member_id"));
         Trainer t = trainerRepo.findById(rs.getInt("trainer_id"));
         Session s = sessionRepo.findById(rs.getInt("session_id"));
-        
-        // Create the record but overwrite the auto-generated timestamp with the saved one
-        AttendanceRecord a = new AttendanceRecord(rs.getInt("id"), m, t, s);
-        return a; 
+        LocalDateTime recordedAt = rs.getObject("recorded_at", LocalDateTime.class);
+        return new AttendanceRecord(rs.getInt("id"), m, t, s, recordedAt);
     }
 }
