@@ -5,6 +5,7 @@ export type SessionStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 
 export type PayMethod = 'CASH' | 'CARD' | 'E_WALLET';
 export type PulseLevel = 'FOLLOW_UP' | 'WATCH' | 'POSITIVE';
 export type TrainerStatus = 'ACTIVE' | 'DISABLED';
+export type WaitlistStatus = 'WAITING' | 'OFFERED' | 'BOOKED' | 'CANCELLED' | 'EXPIRED';
 
 export const PLANS: Plan[] = ['BASIC', 'PREMIUM', 'VIP'];
 export const GENDERS: Gender[] = ['MALE', 'FEMALE'];
@@ -45,6 +46,21 @@ export interface Session {
   date: string; time: string; status: SessionStatus; declineReason?: string; completionNote?: string;
 }
 export interface Slot { time: string; available: boolean }
+export interface WaitlistEntry {
+  id: number; memberId: number; memberName: string; trainerId: number; trainerName: string;
+  date: string; time: string; status: WaitlistStatus; position: number;
+  notifiedAt?: string | null; offerExpiresAt?: string | null;
+}
+export interface AlternativeSlot {
+  trainerId: number; trainerName: string; specialty: string;
+  date: string; time: string; kind: 'SAME_TRAINER' | 'OTHER_TRAINER';
+}
+export interface SlotDemand { date: string; time: string; waiting: number; total: number }
+export interface TrainerDemand { trainerId: number; name: string; waiting: number; total: number }
+export interface FairSlotInsights {
+  activeEntries: number; waitingEntries: number; offeredEntries: number;
+  topSlots: SlotDemand[]; topTrainers: TrainerDemand[];
+}
 export interface Payment {
   id: number; memberId: number; memberName: string; amount: number; method: PayMethod; paidAt: string;
 }

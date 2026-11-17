@@ -99,16 +99,16 @@ Key capabilities:
 Pulse provides rule-based indicators to support staff decisions. A flagged member is not automatically considered likely to cancel their membership, and staff can review the available context before taking action.
 
 ### 12. Gymmetry FairSlot — Flexible Session Booking
-**Status:** Not started — Waitlists, availability notifications, and alternative-slot suggestions are not implemented yet.
+**Status:** Implemented
 
 Improve session availability and help members find suitable alternatives when their preferred time slots are unavailable.
 
 Key capabilities:
-- Allow members to join a waitlist for fully booked sessions.
-- Notify waitlisted members when a slot becomes available following a cancellation or schedule change.
-- Suggest alternative sessions or trainers when a requested slot is unavailable.
-- Maintain a transparent waitlist order based on defined booking rules.
-- Provide administrators with insights into frequently requested time slots and scheduling demand.
+- Allow members to join a waitlist for fully booked sessions (`POST /api/fairslot/waitlist`).
+- Notify waitlisted members when a slot becomes available following a cancellation or schedule change. The next member receives a 24-hour offer, and a background job expires unclaimed offers every 15 minutes.
+- Suggest alternative sessions or trainers when a requested slot is unavailable (`GET /api/fairslot/alternatives`).
+- Maintain a transparent waitlist order based on defined booking rules (`GET /api/fairslot/waitlist`).
+- Provide administrators with insights into frequently requested time slots and scheduling demand (`GET /api/fairslot/insights`).
 
 FairSlot aims to make better use of available trainer schedules while giving members more opportunities to book suitable sessions.
 

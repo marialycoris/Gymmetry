@@ -28,6 +28,8 @@ const ICONS: Record<string, LucideIcon> = {
   requests: Inbox,
   schedule: CalendarDays,
   attendance: ClipboardCheck,
+  waitlist: Inbox,
+  fairslot: Inbox,
 };
 
 interface SidebarProps {

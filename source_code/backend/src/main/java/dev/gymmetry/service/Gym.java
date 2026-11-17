@@ -7,30 +7,45 @@ import dev.gymmetry.repository.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-// import java.util.ArrayList;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Gym {
 
+    public static final List<LocalTime> BOOKING_SLOTS = List.of(
+            LocalTime.of(6, 0), LocalTime.of(8, 0), LocalTime.of(10, 0),
+            LocalTime.of(16, 0), LocalTime.of(18, 0), LocalTime.of(20, 0));
+
+    private static final int WAITLIST_OFFER_HOURS = 24;
+
     private final MemberRepository memberRepo;
     private final TrainerRepository trainerRepo;
     private final SessionRepository sessionRepo;
     private final PaymentRepository paymentRepo;
     private final AttendanceRepository attendanceRepo;
+    private final WaitlistRepository waitlistRepo;
     private final AuthService authService;
 
     public Gym(MemberRepository memberRepo, TrainerRepository trainerRepo,
                SessionRepository sessionRepo, PaymentRepository paymentRepo,
-               AttendanceRepository attendanceRepo, AuthService authService) {
+               AttendanceRepository attendanceRepo, WaitlistRepository waitlistRepo,
+               AuthService authService) {
         this.memberRepo = memberRepo;
         this.trainerRepo = trainerRepo;
         this.sessionRepo = sessionRepo;
         this.paymentRepo = paymentRepo;
         this.attendanceRepo = attendanceRepo;
+        this.waitlistRepo = waitlistRepo;
         this.authService = authService;
     }
+
+    public record SlotAvailability(LocalTime time, boolean available) {}
+
+    public record AlternativeSlot(int trainerId, String trainerName, String specialty,
+                                  LocalDate date, LocalTime time, String kind) {}
 
     // ============================================================
     // MEMBERS
@@ -269,8 +284,11 @@ public class Gym {
     public void trainerDecline(int sessionId, Trainer trainer, String reason) {
         Session s = findSession(sessionId);
         requireOwnership(s, trainer);
+        Trainer slotTrainer = s.getTrainer();
+        LocalDateTime slotTime = s.getScheduledAt();
         s.decline(reason);
         sessionRepo.update(s);
+        offerNextForSlot(slotTrainer.getId(), slotTime);
     }
 
     public void trainerMarkPresent(int sessionId, Trainer trainer) {
@@ -289,9 +307,12 @@ public class Gym {
     /** API flow: the trainer of the session accepts or declines a request (no login context). */
     public void respondToSession(int sessionId, boolean accept, String reason) {
         Session s = findSession(sessionId);
+        Trainer slotTrainer = s.getTrainer();
+        LocalDateTime slotTime = s.getScheduledAt();
         if (accept) s.accept();
         else s.decline(reason);
         sessionRepo.update(s);
+        if (!accept) offerNextForSlot(slotTrainer.getId(), slotTime);
     }
 
     /** API flow: the trainer of the session marks it completed with an optional note. */
@@ -337,8 +358,11 @@ public class Gym {
         if (!memberCanEdit(s)) {
             throw new IllegalStateException("Cannot reschedule — less than 48h remain or session not editable");
         }
+        Trainer oldTrainer = s.getTrainer();
+        LocalDateTime oldTime = s.getScheduledAt();
         s.reschedule(newTime, newTrainer);
         sessionRepo.update(s);
+        offerNextForSlot(oldTrainer.getId(), oldTime);
     }
 
     public void memberCancel(int sessionId, Member member) {
@@ -349,8 +373,11 @@ public class Gym {
         if (!memberCanEdit(s)) {
             throw new IllegalStateException("Cannot cancel — less than 48h remain or session not editable");
         }
+        Trainer slotTrainer = s.getTrainer();
+        LocalDateTime slotTime = s.getScheduledAt();
         s.memberCancel();
         sessionRepo.update(s);
+        offerNextForSlot(slotTrainer.getId(), slotTime);
     }
 
     /** API flow: an admin reassigns a declined session to another trainer. */
@@ -366,14 +393,20 @@ public class Gym {
         if (trainerHasConflict(newTrainer, s.getScheduledAt())) {
             throw new IllegalStateException("Trainer already has a session at that time");
         }
+        Trainer oldTrainer = s.getTrainer();
+        LocalDateTime slotTime = s.getScheduledAt();
         s.reassign(newTrainer);
         sessionRepo.update(s);
+        offerNextForSlot(oldTrainer.getId(), slotTime);
     }
 
     public void adminMarkTrainerAbsent(int sessionId, Admin admin, String reason) {
         Session s = findSession(sessionId);
+        Trainer slotTrainer = s.getTrainer();
+        LocalDateTime slotTime = s.getScheduledAt();
         s.adminMarkTrainerAbsent(reason);
         sessionRepo.update(s);
+        offerNextForSlot(slotTrainer.getId(), slotTime);
     }
 
     public void adminOverrideTrainerStatus(int sessionId, Admin admin,
@@ -400,6 +433,186 @@ public class Gym {
         return trainerRepo.findAll().stream()
                 .filter(t -> !trainerHasConflict(t, when))
                 .collect(Collectors.toList());
+    }
+
+    // ============================================================
+    // FAIRSLOT
+    // ============================================================
+
+    public boolean isSlotAvailable(int trainerId, LocalDateTime when) {
+        return sessionRepo.findAll().stream().noneMatch(s ->
+                s.getTrainer().getId() == trainerId
+                        && s.getScheduledAt().equals(when)
+                        && (s.getStatus() == SessionStatus.REQUESTED
+                            || s.getStatus() == SessionStatus.SCHEDULED));
+    }
+
+    public List<SlotAvailability> getOpenSlots(int trainerId, LocalDate date) {
+        findTrainer(trainerId);
+        LocalDateTime now = LocalDateTime.now();
+        List<SlotAvailability> slots = new ArrayList<>();
+        for (LocalTime time : BOOKING_SLOTS) {
+            LocalDateTime when = date.atTime(time);
+            slots.add(new SlotAvailability(time,
+                    when.isAfter(now) && isSlotAvailable(trainerId, when)));
+        }
+        return slots;
+    }
+
+    public List<AlternativeSlot> getAlternatives(int trainerId, LocalDate date, LocalTime time) {
+        Trainer requested = findTrainer(trainerId);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime requestedWhen = date.atTime(time);
+        List<AlternativeSlot> result = new ArrayList<>();
+
+        for (LocalTime slot : BOOKING_SLOTS) {
+            if (slot.equals(time)) continue;
+            LocalDateTime when = date.atTime(slot);
+            if (when.isAfter(now) && isSlotAvailable(trainerId, when)) {
+                result.add(alternative(requested, date, slot, "SAME_TRAINER"));
+            }
+        }
+        for (Trainer t : getAllTrainers()) {
+            if (t.getId() == trainerId || !isTrainerActive(t)) continue;
+            if (requestedWhen.isAfter(now) && isSlotAvailable(t.getId(), requestedWhen)) {
+                result.add(alternative(t, date, time, "OTHER_TRAINER"));
+            }
+        }
+        for (Trainer t : getAllTrainers()) {
+            if (t.getId() == trainerId || !isTrainerActive(t)) continue;
+            for (LocalTime slot : BOOKING_SLOTS) {
+                if (slot.equals(time)) continue;
+                LocalDateTime when = date.atTime(slot);
+                if (when.isAfter(now) && isSlotAvailable(t.getId(), when)) {
+                    result.add(alternative(t, date, slot, "OTHER_TRAINER"));
+                }
+            }
+        }
+        return result.stream().limit(8).toList();
+    }
+
+    public WaitlistEntry joinWaitlist(int memberId, int trainerId, LocalDateTime when) {
+        Member member = findMember(memberId);
+        member.refreshStatus();
+        if (!member.isMembershipValid()) {
+            throw new MembershipExpiredException(memberId, member.getExpiryDate());
+        }
+        Trainer trainer = findTrainer(trainerId);
+        if (!when.isAfter(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Choose a future time to join the waitlist");
+        }
+        if (isSlotAvailable(trainerId, when)) {
+            throw new IllegalStateException("That time is still open — book it instead");
+        }
+        boolean memberConflict = sessionRepo.findAll().stream().anyMatch(s ->
+                s.getMember().getId() == memberId
+                        && s.getScheduledAt().equals(when)
+                        && (s.getStatus() == SessionStatus.REQUESTED
+                            || s.getStatus() == SessionStatus.SCHEDULED));
+        if (memberConflict) {
+            throw new IllegalStateException("You already have a session at that time");
+        }
+        if (waitlistRepo.existsActiveForMemberSlot(memberId, trainerId, when)) {
+            throw new IllegalStateException("You are already on this waitlist");
+        }
+        return waitlistRepo.save(new WaitlistEntry(0, member, trainer, when));
+    }
+
+    public List<WaitlistEntry> getWaitlistForMember(int memberId) {
+        findMember(memberId);
+        expireWaitlistOffers();
+        return waitlistRepo.findByMember(memberId);
+    }
+
+    public List<WaitlistEntry> getAllWaitlist() {
+        expireWaitlistOffers();
+        return waitlistRepo.findAll();
+    }
+
+    public int getWaitlistPosition(WaitlistEntry entry) {
+        if (!entry.isActive()) return 0;
+        int position = 1;
+        for (WaitlistEntry waiting : waitlistRepo.findActiveBySlot(
+                entry.getTrainer().getId(), entry.getScheduledAt())) {
+            if (waiting.getId() == entry.getId()) return position;
+            position++;
+        }
+        return 0;
+    }
+
+    public WaitlistEntry cancelWaitlist(int id) {
+        WaitlistEntry entry = findWaitlistEntry(id);
+        if (!entry.isActive()) {
+            throw new IllegalStateException("This waitlist entry is no longer active");
+        }
+        boolean wasOffered = entry.getStatus() == WaitlistStatus.OFFERED;
+        entry.cancel();
+        waitlistRepo.update(entry);
+        if (wasOffered) offerNextForSlot(entry.getTrainer().getId(), entry.getScheduledAt());
+        return entry;
+    }
+
+    public Session claimWaitlist(int id) {
+        WaitlistEntry entry = findWaitlistEntry(id);
+        if (entry.isOfferExpired()) {
+            entry.expireOffer();
+            waitlistRepo.update(entry);
+            offerNextForSlot(entry.getTrainer().getId(), entry.getScheduledAt());
+            throw new IllegalStateException("This offer has expired");
+        }
+        if (entry.getStatus() != WaitlistStatus.OFFERED) {
+            throw new IllegalStateException("This waitlist entry does not have an open offer");
+        }
+        Session session = requestSession(entry.getMember().getId(),
+                entry.getTrainer().getId(), entry.getScheduledAt());
+        entry.book();
+        waitlistRepo.update(entry);
+        return session;
+    }
+
+    public int expireWaitlistOffers() {
+        int expired = 0;
+        for (WaitlistEntry entry : waitlistRepo.findOffered()) {
+            if (!entry.isOfferExpired()) continue;
+            entry.expireOffer();
+            waitlistRepo.update(entry);
+            expired++;
+            offerNextForSlot(entry.getTrainer().getId(), entry.getScheduledAt());
+        }
+        return expired;
+    }
+
+    private void offerNextForSlot(int trainerId, LocalDateTime when) {
+        if (!isSlotAvailable(trainerId, when)) return;
+        List<WaitlistEntry> entries = waitlistRepo.findActiveBySlot(trainerId, when);
+        for (WaitlistEntry entry : entries) {
+            if (entry.getStatus() != WaitlistStatus.OFFERED) continue;
+            if (!entry.isOfferExpired()) return;
+            entry.expireOffer();
+            waitlistRepo.update(entry);
+        }
+        for (WaitlistEntry entry : entries) {
+            if (entry.getStatus() != WaitlistStatus.WAITING) continue;
+            entry.offer(LocalDateTime.now().plusHours(WAITLIST_OFFER_HOURS));
+            waitlistRepo.update(entry);
+            return;
+        }
+    }
+
+    private WaitlistEntry findWaitlistEntry(int id) {
+        WaitlistEntry entry = waitlistRepo.findById(id);
+        if (entry == null) throw new IllegalArgumentException("Waitlist entry not found: " + id);
+        return entry;
+    }
+
+    private AlternativeSlot alternative(Trainer trainer, LocalDate date, LocalTime time, String kind) {
+        String specialty = trainer.getSpecialties().isEmpty() ? "" : trainer.getSpecialties().get(0);
+        return new AlternativeSlot(trainer.getId(), trainer.getName(), specialty, date, time, kind);
+    }
+
+    private boolean isTrainerActive(Trainer trainer) {
+        User user = authService.findByPerson(Role.TRAINER, trainer.getId());
+        return user == null || user.getAccountStatus() != AccountStatus.DISABLED;
     }
 
     public List<AttendanceRecord> getAttendanceForMember(int memberId) {

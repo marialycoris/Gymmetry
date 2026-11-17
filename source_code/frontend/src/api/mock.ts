@@ -1,6 +1,6 @@
 // In-memory demo data so the UI works before the backend is connected.
 // Delete this file (and set USE_MOCK = false in client.ts) once API is live.
-import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
+import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports, WaitlistEntry, AlternativeSlot, FairSlotInsights } from '../lib/types';
 import { METHODS, PLANS, STATUSES } from '../lib/types';
 import type { User } from '../context/AuthContext';
 import { passwordError } from '../lib/password';
@@ -27,7 +27,7 @@ const trainerName = (id: number) => trainers.find((t) => t.id === id)!.name;
 const mk = (id: number, memberId: number, trainerId: number, date: number, time: string, status: SessionStatus, declineReason?: string): Session =>
   ({ id, memberId, memberName: nameOf(memberId), trainerId, trainerName: trainerName(trainerId), date: iso(date), time, status, declineReason });
 
-let sessions: Session[] = [
+const sessions: Session[] = [
   mk(1, 1, 1, 1, '10:00', 'PENDING'),
   mk(2, 5, 2, 2, '16:00', 'PENDING'),
   mk(3, 2, 3, 1, '08:00', 'DECLINED', 'Fully booked that morning'),
@@ -56,6 +56,13 @@ const payments: Payment[] = [
   { id: 4, memberId: 3, memberName: 'Ana Cruz', amount: 2500, method: 'CARD', paidAt: iso(-42) },
 ];
 
+const WAITLIST_OFFER_MS = 24 * 60 * 60 * 1000;
+const waitlist: WaitlistEntry[] = [
+  { id: 201, memberId: 2, memberName: 'Jon Reyes', trainerId: 1, trainerName: 'Rico Dela Cruz', date: iso(1), time: '10:00', status: 'WAITING', position: 0 },
+  { id: 202, memberId: 5, memberName: 'Liza Tan', trainerId: 1, trainerName: 'Rico Dela Cruz', date: iso(1), time: '10:00', status: 'WAITING', position: 0 },
+  { id: 203, memberId: 1, memberName: 'Maria Santos', trainerId: 2, trainerName: 'Bea Mendoza', date: iso(2), time: '16:00', status: 'WAITING', position: 0 },
+];
+
 const USERS: Record<string, User> = {
   admin: { username: 'admin', role: 'ADMIN', personId: 0, name: 'Gym Admin' },
   trainer: { username: 'trainer', role: 'TRAINER', personId: 1, name: 'Coach Rico' },
@@ -68,6 +75,41 @@ const trainer = (id: number) => { const t = trainers.find((x) => x.id === id); i
 const session = (id: number) => { const s = sessions.find((x) => x.id === id); if (!s) throw new Error('Session not found.'); return s; };
 const slotTaken = (trainerId: number, date: string, time: string) =>
   sessions.some((s) => s.trainerId === trainerId && s.date === date && s.time === time && isOpen(s));
+const activeWaitlist = (e: WaitlistEntry) => e.status === 'WAITING' || e.status === 'OFFERED';
+const waitlistPosition = (entry: WaitlistEntry) => {
+  if (!activeWaitlist(entry)) return 0;
+  return waitlist
+    .filter((e) => activeWaitlist(e) && e.trainerId === entry.trainerId && e.date === entry.date && e.time === entry.time)
+    .sort((a, b) => a.id - b.id)
+    .findIndex((e) => e.id === entry.id) + 1;
+};
+const withPosition = (entry: WaitlistEntry): WaitlistEntry => ({ ...entry, position: waitlistPosition(entry) });
+const offerNext = (trainerId: number, date: string, time: string) => {
+  if (slotTaken(trainerId, date, time)) return;
+  const entries = waitlist
+    .filter((e) => activeWaitlist(e) && e.trainerId === trainerId && e.date === date && e.time === time)
+    .sort((a, b) => a.id - b.id);
+  if (entries.some((e) => e.status === 'OFFERED')) return;
+  const next = entries.find((e) => e.status === 'WAITING');
+  if (!next) return;
+  next.status = 'OFFERED';
+  next.notifiedAt = new Date().toISOString();
+  next.offerExpiresAt = new Date(Date.now() + WAITLIST_OFFER_MS).toISOString();
+};
+const expireOffers = () => {
+  const now = Date.now();
+  waitlist.forEach((e) => {
+    if (e.status !== 'OFFERED' || !e.offerExpiresAt) return;
+    if (new Date(e.offerExpiresAt).getTime() >= now) return;
+    e.status = 'EXPIRED';
+    offerNext(e.trainerId, e.date, e.time);
+  });
+};
+const waitlistEntry = (id: number) => {
+  const entry = waitlist.find((e) => e.id === id);
+  if (!entry) throw new Error('Waitlist entry not found.');
+  return entry;
+};
 
 export const mock = {
   login(username: string, password: string): User {
@@ -232,11 +274,14 @@ export const mock = {
     const s = session(id);
     s.status = accept ? 'ACCEPTED' : 'DECLINED';
     s.declineReason = accept ? undefined : reason!.trim();
+    if (!accept) offerNext(s.trainerId, s.date, s.time);
   },
   reassignSession(id: number, trainerId: number): void {
     const s = session(id);
     if (slotTaken(trainerId, s.date, s.time)) throw new Error(`${trainerName(trainerId)} is already booked at that time.`);
+    const oldTrainerId = s.trainerId;
     Object.assign(s, { trainerId, trainerName: trainerName(trainerId), status: 'PENDING', declineReason: undefined });
+    offerNext(oldTrainerId, s.date, s.time);
   },
   completeSession(id: number, note?: string): void {
     const s = session(id); s.status = 'COMPLETED'; s.completionNote = note?.trim() || undefined;
@@ -245,6 +290,112 @@ export const mock = {
   overrideAttendance(id: number, status: 'COMPLETED' | 'NOT_HELD'): void {
     const s = session(id); s.status = status;
     if (status === 'COMPLETED') member(s.memberId).lastAttendance = s.date;
+  },
+
+  joinWaitlist(i: { memberId: number; trainerId: number; date: string; time: string }): WaitlistEntry {
+    expireOffers();
+    const m = member(i.memberId);
+    const t = trainer(i.trainerId);
+    if (m.status !== 'ACTIVE') throw new Error('Only active members can join a waitlist.');
+    if (t.status !== 'ACTIVE') throw new Error('That trainer is not available for booking.');
+    if (!slotTaken(i.trainerId, i.date, i.time)) throw new Error('That slot is open — book it directly.');
+    if (waitlist.some((e) => activeWaitlist(e) && e.memberId === i.memberId &&
+      e.trainerId === i.trainerId && e.date === i.date && e.time === i.time)) {
+      throw new Error('You are already on the waitlist for this slot.');
+    }
+    const entry: WaitlistEntry = {
+      id: ++seq, memberId: i.memberId, memberName: m.name,
+      trainerId: i.trainerId, trainerName: t.name, date: i.date, time: i.time,
+      status: 'WAITING', position: 0,
+    };
+    waitlist.push(entry);
+    return withPosition(entry);
+  },
+  getWaitlist(memberId?: number): WaitlistEntry[] {
+    expireOffers();
+    return waitlist
+      .filter((e) => !memberId || e.memberId === memberId)
+      .map(withPosition);
+  },
+  cancelWaitlist(id: number): void {
+    expireOffers();
+    const entry = waitlistEntry(id);
+    if (entry.status === 'BOOKED') throw new Error('This offer was already booked.');
+    if (!activeWaitlist(entry)) return;
+    const wasOffered = entry.status === 'OFFERED';
+    entry.status = 'CANCELLED';
+    entry.notifiedAt = undefined;
+    entry.offerExpiresAt = undefined;
+    if (wasOffered) offerNext(entry.trainerId, entry.date, entry.time);
+  },
+  claimWaitlist(id: number): void {
+    expireOffers();
+    const entry = waitlistEntry(id);
+    if (entry.status !== 'OFFERED') throw new Error('This waitlist entry has no active offer.');
+    if (slotTaken(entry.trainerId, entry.date, entry.time)) throw new Error('That slot was just taken.');
+    if (sessions.some((s) => s.memberId === entry.memberId && s.date === entry.date &&
+      s.time === entry.time && isOpen(s))) {
+      throw new Error('You already have a session at this time.');
+    }
+    const booked = mk(++seq, entry.memberId, entry.trainerId, 0, entry.time, 'PENDING');
+    booked.date = entry.date;
+    sessions.push(booked);
+    entry.status = 'BOOKED';
+    entry.notifiedAt = undefined;
+    entry.offerExpiresAt = undefined;
+  },
+  getAlternatives(i: { trainerId: number; date: string; time: string }): AlternativeSlot[] {
+    const options: AlternativeSlot[] = [];
+    const requested = trainers.find((t) => t.id === i.trainerId);
+    const add = (t: Trainer, time: string) => {
+      if (slotTaken(t.id, i.date, time)) return;
+      if (options.some((o) => o.trainerId === t.id && o.time === time)) return;
+      options.push({
+        trainerId: t.id, trainerName: t.name, specialty: t.specialty,
+        date: i.date, time, kind: t.id === i.trainerId ? 'SAME_TRAINER' : 'OTHER_TRAINER',
+      });
+    };
+    if (requested && requested.status === 'ACTIVE') {
+      SLOTS.filter((time) => time !== i.time).forEach((time) => add(requested, time));
+    }
+    trainers
+      .filter((t) => t.status === 'ACTIVE' && t.id !== i.trainerId)
+      .forEach((t) => add(t, i.time));
+    trainers
+      .filter((t) => t.status === 'ACTIVE' && t.id !== i.trainerId)
+      .forEach((t) => SLOTS.filter((time) => time !== i.time).forEach((time) => add(t, time)));
+    return options.slice(0, 8);
+  },
+  getFairSlotInsights(): FairSlotInsights {
+    expireOffers();
+    const active = waitlist.filter(activeWaitlist);
+    const slotMap = new Map<string, { date: string; time: string; waiting: number; total: number }>();
+    const trainerMap = new Map<number, { name: string; waiting: number; total: number }>();
+    waitlist.forEach((e) => {
+      const key = `${e.date}|${e.time}`;
+      const slot = slotMap.get(key) ?? { date: e.date, time: e.time, waiting: 0, total: 0 };
+      slot.total += 1;
+      if (e.status === 'WAITING') slot.waiting += 1;
+      slotMap.set(key, slot);
+      const tr = trainerMap.get(e.trainerId) ?? { name: e.trainerName, waiting: 0, total: 0 };
+      tr.total += 1;
+      if (e.status === 'WAITING') tr.waiting += 1;
+      trainerMap.set(e.trainerId, tr);
+    });
+    const topSlots = [...slotMap.values()]
+      .sort((a, b) => b.waiting - a.waiting || b.total - a.total || `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`))
+      .slice(0, 6);
+    const topTrainers = [...trainerMap.entries()]
+      .map(([trainerId, t]) => ({ trainerId, ...t }))
+      .sort((a, b) => b.waiting - a.waiting || b.total - a.total || a.name.localeCompare(b.name))
+      .slice(0, 6);
+    return {
+      activeEntries: active.length,
+      waitingEntries: active.filter((e) => e.status === 'WAITING').length,
+      offeredEntries: active.filter((e) => e.status === 'OFFERED').length,
+      topSlots,
+      topTrainers,
+    };
   },
 
   getReports(): Reports {

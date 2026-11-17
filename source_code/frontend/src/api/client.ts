@@ -1,5 +1,5 @@
 import type { User } from '../context/AuthContext';
-import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports } from '../lib/types';
+import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports, WaitlistEntry, AlternativeSlot, FairSlotInsights } from '../lib/types';
 import { mock } from './mock';
 
 const API_URL = 'http://localhost:8080/api';
@@ -104,6 +104,27 @@ export const api = {
   // PUT /sessions/:id/attendance  { status }  (admin override)
   overrideAttendance: (id: number, status: 'COMPLETED' | 'NOT_HELD') =>
     call(() => mock.overrideAttendance(id, status), () => http<void>(`/sessions/${id}/attendance`, send('PUT', { status }))),
+
+  // ---------- FairSlot ----------
+  // POST /fairslot/waitlist  (join the queue for a fully booked slot)
+  joinWaitlist: (input: { memberId: number; trainerId: number; date: string; time: string }) =>
+    call(() => mock.joinWaitlist(input), () => http<WaitlistEntry>('/fairslot/waitlist', send('POST', input))),
+  // GET /fairslot/waitlist?memberId=  (omit memberId for the admin queue)
+  getWaitlist: (memberId?: number) =>
+    call(() => mock.getWaitlist(memberId), () => http<WaitlistEntry[]>(`/fairslot/waitlist${qs({ memberId })}`)),
+  // DELETE /fairslot/waitlist/:id
+  cancelWaitlist: (id: number) =>
+    call(() => mock.cancelWaitlist(id), () => http<void>(`/fairslot/waitlist/${id}`, send('DELETE'))),
+  // POST /fairslot/waitlist/:id/claim  (turn an offer into a booked session)
+  claimWaitlist: (id: number) =>
+    call(() => mock.claimWaitlist(id), () => http<void>(`/fairslot/waitlist/${id}/claim`, send('POST'))),
+  // GET /fairslot/alternatives?trainerId=&date=&time=
+  getAlternatives: (input: { trainerId: number; date: string; time: string }) =>
+    call(() => mock.getAlternatives(input),
+      () => http<AlternativeSlot[]>(`/fairslot/alternatives${qs(input)}`)),
+  // GET /fairslot/insights  (admin demand overview)
+  getFairSlotInsights: () =>
+    call(() => mock.getFairSlotInsights(), () => http<FairSlotInsights>('/fairslot/insights')),
 
   // ---------- Reports & Pulse ----------
   // GET /reports/summary

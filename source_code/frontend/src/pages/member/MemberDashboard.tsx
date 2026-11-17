@@ -20,6 +20,7 @@ import { Loading, Notice, Stat } from '../../components/Widgets';
 const NAV: NavItem[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'sessions', label: 'My sessions' },
+  { id: 'waitlist', label: 'Waitlist' },
   { id: 'payments', label: 'Payments' },
 ];
 
@@ -129,7 +130,7 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
   );
 }
 
-function BookModal({ memberId, onClose, onBooked }: { memberId: number; onClose: () => void; onBooked: () => void }) {
+function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: () => void; onDone: (message: string) => void }) {
   const trainers = useAsync(() => api.getTrainers());
   const member = useAsync(() => api.getMember(memberId), [memberId]);
   const [trainerId, setTrainerId] = useState('');
@@ -138,44 +139,86 @@ function BookModal({ memberId, onClose, onBooked }: { memberId: number; onClose:
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const slots = useAsync(() => (trainerId ? api.getSlots(Number(trainerId), date) : Promise.resolve([])), [trainerId, date]);
+  const selectedSlot = (slots.data ?? []).find((s) => s.time === time);
+  const isFull = !!selectedSlot && !selectedSlot.available;
+  const alternatives = useAsync(
+    () => (isFull && trainerId && time ? api.getAlternatives({ trainerId: Number(trainerId), date, time }) : Promise.resolve([])),
+    [isFull, trainerId, date, time],
+  );
   const canBook = member.data?.status === 'ACTIVE';
   const trainerOptions = (trainers.data ?? []).map((t) => ({
     value: t.id,
-    label: `${t.name} · ${t.specialty}`,
+    label: `${t.name} - ${t.specialty}`,
     description: SPECIALIZATIONS.find((s) => s.title === t.specialty)?.description,
   }));
 
-  const pickTrainer = (v: string) => { setTrainerId(v); setTime(''); };
+  const pickTrainer = (v: string) => { setTrainerId(v); setTime(''); setErr(''); };
+  const pickAlternative = (a: { trainerId: number; time: string }) => {
+    setErr('');
+    if (a.trainerId !== Number(trainerId)) setTrainerId(String(a.trainerId));
+    setTime(a.time);
+  };
 
-  const book = async () => {
+  const submit = async () => {
     setBusy(true); setErr('');
     try {
-      await api.bookSession({ memberId, trainerId: Number(trainerId), date, time });
-      onBooked();
-    } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
+      if (isFull) {
+        const entry = await api.joinWaitlist({ memberId, trainerId: Number(trainerId), date, time });
+        onDone(`You joined the waitlist for ${fmtDate(date)} at ${fmtTime(time)}. Position #${entry.position} — we will offer you the slot when it opens.`);
+      } else {
+        await api.bookSession({ memberId, trainerId: Number(trainerId), date, time });
+        onDone('Request sent. You will see the trainer\'s answer in this list once they respond.');
+      }
+    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(false); }
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Book a session" hideFooter isLoading={busy} loadingLabel="Sending request…">
+    <Modal isOpen onClose={onClose} title="Book a session" hideFooter isLoading={busy} loadingLabel={isFull ? 'Joining waitlist...' : 'Sending request...'}>
       {trainers.loading || member.loading ? <Loading /> : (
         <>
           {!canBook && <Notice tone="warn">Only active memberships can book sessions. Renew at the front desk first.</Notice>}
           {err && <Notice tone="error">{err}</Notice>}
-          <SearchableSelect label="Trainer" value={trainerId} onChange={pickTrainer} options={trainerOptions} placeholder="Search trainers…" />
+          <SearchableSelect label="Trainer" value={trainerId} onChange={pickTrainer} options={trainerOptions} placeholder="Search trainers..." />
           <Input label="Date" type="date" min={today()} value={date} onChange={(e) => { setDate(e.target.value); setTime(''); }} className="max-w-xs" />
           {!trainerId ? <p className="text-gray-500">Choose a trainer to see open times.</p> : slots.loading ? <Loading /> : (
-            <div className="flex flex-wrap gap-2">
-              {(slots.data ?? []).map((s) => (
-                <button key={s.time} disabled={!s.available} aria-pressed={time === s.time} onClick={() => setTime(s.time)}
-                  className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gym-crimson disabled:text-gray-400 disabled:line-through disabled:bg-gray-50 ${time === s.time ? 'border-gym-crimson bg-gym-crimson text-white' : 'border-gray-200 hover:border-gray-400'}`}>
-                  {fmtTime(s.time)}
-                </button>
-              ))}
-            </div>
+            <>
+              <p className="mb-2 text-sm text-gray-500">Pick a time. Fully booked times can be joined through the FairSlot waitlist.</p>
+              <div className="flex flex-wrap gap-2">
+                {(slots.data ?? []).map((s) => (
+                  <button key={s.time} aria-pressed={time === s.time} onClick={() => { setTime(s.time); setErr(''); }}
+                    title={s.available ? 'Open slot' : 'Fully booked — join the waitlist'}
+                    className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gym-crimson ${!s.available ? 'border-dashed' : ''} ${time === s.time ? 'border-gym-crimson bg-gym-crimson text-white' : s.available ? 'border-gray-200 hover:border-gray-400' : 'border-gray-300 text-gray-500 hover:border-gym-crimson'}`}>
+                    <span className="block">{fmtTime(s.time)}</span>
+                    {!s.available && <span className="block text-[10px] font-bold uppercase tracking-wide">Full</span>}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
+          {isFull && (
+            <>
+              <Notice tone="warn">This time is fully booked. Join the waitlist to get the next offer, or choose a nearby option below.</Notice>
+              <div className="rounded-lg border border-gray-200 p-4">
+                <p className="font-semibold">Nearby options</p>
+                {alternatives.loading ? <Loading label="Finding alternatives..." /> : (alternatives.data ?? []).length === 0 ? (
+                  <p className="mt-2 text-sm text-gray-500">No nearby slots are open. Joining the waitlist is your best option.</p>
+                ) : (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {(alternatives.data ?? []).map((a) => (
+                      <Button key={`${a.trainerId}-${a.time}`} size="sm" variant="secondary" onClick={() => pickAlternative(a)}>
+                        {a.trainerName} - {fmtTime(a.time)} ({a.kind === 'SAME_TRAINER' ? 'same trainer' : 'other trainer'})
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
           )}
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
-            <Button disabled={!canBook || !trainerId || !time} isLoading={busy} onClick={book}>Request session</Button>
+            <Button disabled={!canBook || !trainerId || !time} isLoading={busy} onClick={submit}>
+              {isFull ? 'Join waitlist' : 'Request session'}
+            </Button>
           </div>
         </>
       )}
@@ -186,17 +229,17 @@ function BookModal({ memberId, onClose, onBooked }: { memberId: number; onClose:
 function MySessions({ memberId }: { memberId: number }) {
   const { data, loading, error, reload } = useAsync(() => api.getSessions({ memberId }), [memberId]);
   const [booking, setBooking] = useState(false);
-  const [justBooked, setJustBooked] = useState(false);
+  const [notice, setNotice] = useState('');
   if (loading) return <Loading />;
   const list = [...(data ?? [])].sort(byDate).reverse();
   return (
     <>
       {error && <Notice tone="error">{error}</Notice>}
-      {justBooked && <Notice tone="success">Request sent. You will see the trainer’s answer in this list once they respond.</Notice>}
+      {notice && <Notice tone="success">{notice}</Notice>}
       <Card
         title="My sessions"
         headerTone="maroon"
-        action={<Button size="sm" onClick={() => { setJustBooked(false); setBooking(true); }}>Book a session</Button>}
+        action={<Button size="sm" onClick={() => { setNotice(''); setBooking(true); }}>Book a session</Button>}
       >
         <Table headers={['When', 'Trainer', 'Status', 'Note']} isEmpty={list.length === 0} emptyText="You have not booked a session yet." pageSize={5} itemLabel="sessions">
           {list.map((s) => (
@@ -213,9 +256,81 @@ function MySessions({ memberId }: { memberId: number }) {
         <BookModal
           memberId={memberId}
           onClose={() => setBooking(false)}
-          onBooked={() => { setBooking(false); setJustBooked(true); reload(); }}
+          onDone={(message) => { setBooking(false); setNotice(message); reload(); }}
         />
       )}
+    </>
+  );
+}
+
+function MyWaitlist({ memberId, onFind }: { memberId: number; onFind: () => void }) {
+  const { data, loading, error, reload } = useAsync(() => api.getWaitlist(memberId), [memberId]);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [notice, setNotice] = useState('');
+  const [err, setErr] = useState('');
+  if (loading) return <Loading />;
+  const list = [...(data ?? [])].sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`));
+
+  const claim = async (id: number) => {
+    setBusy(id); setErr(''); setNotice('');
+    try {
+      await api.claimWaitlist(id);
+      setNotice('Your offer was claimed. The session is now in My sessions.');
+      reload();
+    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
+  };
+
+  const leave = async (id: number) => {
+    setBusy(id); setErr(''); setNotice('');
+    try {
+      await api.cancelWaitlist(id);
+      setNotice('You left the waitlist.');
+      reload();
+    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
+  };
+
+  return (
+    <>
+      {error && <Notice tone="error">{error}</Notice>}
+      {err && <Notice tone="error">{err}</Notice>}
+      {notice && <Notice tone="success">{notice}</Notice>}
+      <Card
+        title="FairSlot waitlist"
+        headerTone="maroon"
+        action={<Button size="sm" onClick={onFind}>Find a slot</Button>}
+      >
+        <p className="mb-4 text-sm text-gray-500">
+          When a slot is fully booked, join its waitlist from Book a session. Offers hold the slot for 24 hours — claim before it expires or it moves to the next member.
+        </p>
+        <Table
+          headers={['When', 'Trainer', 'Status', 'Position', 'Offer expires', 'Action']}
+          isEmpty={list.length === 0}
+          emptyText="You are not on any waitlist yet."
+          pageSize={5}
+          itemLabel="entries"
+        >
+          {list.map((e) => (
+            <tr key={e.id}>
+              <td className={td}>{fmtDate(e.date)}<span className="block text-xs text-gray-500">{fmtTime(e.time)}</span></td>
+              <td className={`${td} font-semibold`}>{e.trainerName}</td>
+              <td className={td}><Badge value={e.status} /></td>
+              <td className={td}>{e.status === 'WAITING' || e.status === 'OFFERED' ? `#${e.position}` : '—'}</td>
+              <td className={td}>{e.status === 'OFFERED' && e.offerExpiresAt ? new Date(e.offerExpiresAt).toLocaleString() : '—'}</td>
+              <td className={td}>
+                <div className="flex items-center justify-center gap-2">
+                  {e.status === 'OFFERED' && (
+                    <Button size="sm" isLoading={busy === e.id} onClick={() => claim(e.id)}>Claim</Button>
+                  )}
+                  {(e.status === 'WAITING' || e.status === 'OFFERED') && (
+                    <Button size="sm" variant="secondary" disabled={busy === e.id} onClick={() => leave(e.id)}>Leave</Button>
+                  )}
+                  {e.status !== 'WAITING' && e.status !== 'OFFERED' && <span className="text-gray-400">—</span>}
+                </div>
+              </td>
+            </tr>
+          ))}
+        </Table>
+      </Card>
     </>
   );
 }
@@ -250,6 +365,7 @@ export function MemberDashboard() {
     <AppShell nav={NAV} active={tab} onNavigate={setTab}>
       {tab === 'overview' && <Overview go={setTab} memberId={memberId} />}
       {tab === 'sessions' && <MySessions memberId={memberId} />}
+      {tab === 'waitlist' && <MyWaitlist memberId={memberId} onFind={() => setTab('sessions')} />}
       {tab === 'payments' && <MyPayments memberId={memberId} />}
     </AppShell>
   );

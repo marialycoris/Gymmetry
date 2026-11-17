@@ -11,6 +11,7 @@ export type Tone = keyof typeof TONES;
 const BY_VALUE: Record<string, Tone> = {
   ACTIVE: 'green', EXPIRED: 'amber', DISABLED: 'gray',
   PENDING: 'amber', ACCEPTED: 'blue', DECLINED: 'red', COMPLETED: 'green', NOT_HELD: 'red',
+  WAITING: 'amber', OFFERED: 'blue', BOOKED: 'green', CANCELLED: 'gray',
   BASIC: 'gray', PREMIUM: 'blue', VIP: 'maroon',
   FOLLOW_UP: 'red', WATCH: 'amber', POSITIVE: 'green',
 };

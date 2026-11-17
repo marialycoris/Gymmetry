@@ -7,6 +7,7 @@ import dev.gymmetry.service.Gym;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -97,6 +98,19 @@ public class TrainerController {
         try {
             gym.setTrainerPassword(id, req.password());
             return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    public record SlotDto(String time, boolean available) {}
+
+    @GetMapping("/{id}/slots")
+    public ResponseEntity<?> getSlots(@PathVariable int id, @RequestParam String date) {
+        try {
+            return ResponseEntity.ok(gym.getOpenSlots(id, LocalDate.parse(date)).stream()
+                    .map(s -> new SlotDto(s.time().toString(), s.available()))
+                    .toList());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

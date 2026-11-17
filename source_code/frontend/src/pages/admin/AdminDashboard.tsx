@@ -16,6 +16,7 @@ import { TrainersTab } from './TrainersTab';
 import { PaymentsTab } from './PaymentsTab';
 import { SessionsTab } from './SessionsTab';
 import { PulseTab } from './PulseTab';
+import { FairSlotTab } from './FairSlotTab';
 
 const NAV: NavItem[] = [
   { id: 'overview', label: 'Overview' },
@@ -24,6 +25,7 @@ const NAV: NavItem[] = [
   { id: 'payments', label: 'Payments' },
   { id: 'sessions', label: 'Sessions' },
   { id: 'pulse', label: 'Gymmetry Pulse' },
+  { id: 'fairslot', label: 'Gymmetry FairSlot' },
 ];
 
 const PULSE_GROUPS: { level: PulseLevel; label: string }[] = [
@@ -153,6 +155,7 @@ export function AdminDashboard() {
       {tab === 'payments' && <PaymentsTab />}
       {tab === 'sessions' && <SessionsTab />}
       {tab === 'pulse' && <PulseTab onOpenMember={openMember} />}
+      {tab === 'fairslot' && <FairSlotTab />}
     </AppShell>
   );
 }

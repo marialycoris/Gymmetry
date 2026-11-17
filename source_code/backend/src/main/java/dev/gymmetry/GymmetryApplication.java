@@ -32,6 +32,7 @@ public class GymmetryApplication {
         SessionRepository sessionRepo = new SessionRepository(memberRepo, trainerRepo);
         PaymentRepository paymentRepo = new PaymentRepository(memberRepo);
         AttendanceRepository attendanceRepo = new AttendanceRepository(memberRepo, trainerRepo, sessionRepo);
+        WaitlistRepository waitlistRepo = new WaitlistRepository(memberRepo, trainerRepo);
         UserRepository userRepo = new UserRepository(memberRepo, trainerRepo, admin);
 
         AuthService auth = new AuthService(userRepo);
@@ -40,7 +41,8 @@ public class GymmetryApplication {
             System.out.println("  ✓ Admin seeded");
         }
 
-        return new Gym(memberRepo, trainerRepo, sessionRepo, paymentRepo, attendanceRepo, auth);
+        return new Gym(memberRepo, trainerRepo, sessionRepo, paymentRepo, attendanceRepo,
+                waitlistRepo, auth);
     }
 
     @Bean
