@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { CalendarDays, ClipboardCheck, IdCard, Inbox, TriangleAlert } from 'lucide-react';
 import { api } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, daysUntil, fmtDate, fmtTime, money, today } from '../../lib/format';
@@ -11,7 +12,8 @@ import { AppShell, type NavItem } from '../../components/AppShell';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
-import { Badge, pretty } from '../../components/Badge';
+import { Badge } from '../../components/Badge';
+import { pretty } from '../../components/badgeUtils';
 import { Table, td } from '../../components/Table';
 import { Modal } from '../../components/Modal';
 import { SearchableSelect } from '../../components/SearchableSelect';
@@ -133,6 +135,7 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
 
 function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const trainers = useAsync(() => api.getTrainers());
   const member = useAsync(() => api.getMember(memberId), [memberId]);
   const [trainerId, setTrainerId] = useState('');
@@ -160,6 +163,16 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
   };
 
   const submit = async () => {
+    const confirmed = await confirm(isFull ? {
+      title: 'Join waitlist?',
+      message: `Join the waitlist for ${fmtDate(date)} at ${fmtTime(time)}?`,
+      confirmLabel: 'Join waitlist',
+    } : {
+      title: 'Request session?',
+      message: `Send a session request for ${fmtDate(date)} at ${fmtTime(time)}?`,
+      confirmLabel: 'Request session',
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       if (isFull) {
@@ -263,6 +276,7 @@ function MySessions({ memberId }: { memberId: number }) {
 
 function MyWaitlist({ memberId, onFind }: { memberId: number; onFind: () => void }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const { data, loading, error, reload } = useAsync(() => api.getWaitlist(memberId), [memberId]);
   const [busy, setBusy] = useState<number | null>(null);
   if (loading) return <Loading />;
@@ -278,6 +292,16 @@ function MyWaitlist({ memberId, onFind }: { memberId: number; onFind: () => void
   };
 
   const leave = async (id: number) => {
+    const entry = list.find((e) => e.id === id);
+    const confirmed = await confirm({
+      title: 'Leave waitlist?',
+      message: entry
+        ? `Leave the waitlist for ${fmtDate(entry.date)} at ${fmtTime(entry.time)}?`
+        : 'Leave this waitlist entry?',
+      confirmLabel: 'Leave waitlist',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     setBusy(id);
     try {
       await api.cancelWaitlist(id);

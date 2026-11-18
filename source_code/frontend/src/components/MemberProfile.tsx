@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 import { GENDERS, type Member, type MemberUpdateInput } from '../lib/types';
 import { fmtDate } from '../lib/format';
 import { Button } from './Button';
@@ -31,6 +32,7 @@ interface MemberProfileProps {
 /** Read-only member details with an Edit toggle. Reusable anywhere a Member is shown. */
 export function MemberProfile({ member, onSaved }: MemberProfileProps) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [editing, setEditing] = useState(false);
   const [f, setF] = useState<MemberUpdateInput>(() => toInput(member));
   const [busy, setBusy] = useState(false);
@@ -41,6 +43,12 @@ export function MemberProfile({ member, onSaved }: MemberProfileProps) {
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
+    const confirmed = await confirm({
+      title: 'Save member changes?',
+      message: `Save the changes to ${member.name}'s profile?`,
+      confirmLabel: 'Save changes',
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       const updated = await api.updateMember(member.id, f);

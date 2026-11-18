@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type CSSProperties } from 'react';
+import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 
 export type ParticlesShape = 'circle' | 'square' | 'ring' | 'sparkle';
 export type ParticlesHoverEffect = 'parallax' | 'repel' | 'attract';
@@ -385,41 +385,45 @@ const Particles = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wakeRef = useRef<(() => void) | null>(null);
-  const palette = (Array.isArray(particleColors) ? particleColors : [particleColors as unknown as string])
-    .filter(Boolean)
-    .map(String);
-  const settings: Settings = {
-    count: clamp(Math.round(particleCount), 1, MAX_COUNT),
-    spread: Math.max(0.1, particleSpread),
-    speed,
-    colors: palette.length ? palette : ['#ffffff'],
-    mouse: moveParticlesOnHover,
-    hoverFactor: Math.max(0, particleHoverFactor),
-    soft: alphaParticles,
-    size: Math.max(0, particleBaseSize),
-    randomness: Math.max(0, sizeRandomness),
-    camera: Math.max(1, cameraDistance),
-    rotate: !disableRotation,
-    dpr: pixelRatio,
-    shape: SHAPES[shape] ?? 0,
-    glow: Math.max(0, glow),
-    twinkle: clamp(twinkle, 0, 1),
-    depthOfField: Math.max(0, depthOfField),
-    connections,
-    connectionDistance: Math.max(10, connectionDistance),
-    hoverEffect: EFFECTS[hoverEffect] ?? 0,
-    hoverRadius: Math.max(20, hoverRadius),
-    clickBurst,
-    drift: DRIFTS[drift] ?? 0,
-    driftSpeed,
-    variation: Math.max(0, Math.round(variation)),
-    intro,
-    opacity: clamp(opacity, 0, 1),
-    lightMode,
-    paused
-  };
+  const settings: Settings = useMemo(() => {
+    const palette = (Array.isArray(particleColors) ? particleColors : [particleColors as unknown as string])
+      .filter(Boolean)
+      .map(String);
+    return {
+      count: clamp(Math.round(particleCount), 1, MAX_COUNT),
+      spread: Math.max(0.1, particleSpread),
+      speed,
+      colors: palette.length ? palette : ['#ffffff'],
+      mouse: moveParticlesOnHover,
+      hoverFactor: Math.max(0, particleHoverFactor),
+      soft: alphaParticles,
+      size: Math.max(0, particleBaseSize),
+      randomness: Math.max(0, sizeRandomness),
+      camera: Math.max(1, cameraDistance),
+      rotate: !disableRotation,
+      dpr: pixelRatio,
+      shape: SHAPES[shape] ?? 0,
+      glow: Math.max(0, glow),
+      twinkle: clamp(twinkle, 0, 1),
+      depthOfField: Math.max(0, depthOfField),
+      connections,
+      connectionDistance: Math.max(10, connectionDistance),
+      hoverEffect: EFFECTS[hoverEffect] ?? 0,
+      hoverRadius: Math.max(20, hoverRadius),
+      clickBurst,
+      drift: DRIFTS[drift] ?? 0,
+      driftSpeed,
+      variation: Math.max(0, Math.round(variation)),
+      intro,
+      opacity: clamp(opacity, 0, 1),
+      lightMode,
+      paused
+    };
+  }, [particleColors, particleCount, particleSpread, speed, moveParticlesOnHover, particleHoverFactor, alphaParticles, particleBaseSize, sizeRandomness, cameraDistance, disableRotation, pixelRatio, shape, glow, twinkle, depthOfField, connections, connectionDistance, hoverEffect, hoverRadius, clickBurst, drift, driftSpeed, variation, intro, opacity, lightMode, paused]);
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     const container = containerRef.current;

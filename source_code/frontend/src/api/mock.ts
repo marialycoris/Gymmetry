@@ -2,7 +2,7 @@
 // Delete this file (and set USE_MOCK = false in client.ts) once API is live.
 import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports, WaitlistEntry, AlternativeSlot, FairSlotInsights } from '../lib/types';
 import { METHODS, PLANS, STATUSES } from '../lib/types';
-import type { User } from '../context/AuthContext';
+import type { User } from '../context/authState';
 import { passwordError } from '../lib/password';
 
 const iso = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toLocaleDateString('en-CA'); };

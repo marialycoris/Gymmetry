@@ -4,7 +4,8 @@ import {
   ChevronRight, Circle, ClipboardCheck, CreditCard, Dumbbell, IdCard, Inbox,
   LayoutDashboard, LogOut, Menu, Users, X, type LucideIcon,
 } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
+import { useConfirm } from '../hooks/useConfirm';
 import { Button } from './Button';
 
 export interface NavItem { id: string; label: string }
@@ -118,6 +119,7 @@ function Sidebar({ nav, active, collapsed, mobile, userName, userRole, onNavigat
 
 export function AppShell({ nav, active, onNavigate, children }: AppShellProps) {
   const { user, logout } = useAuth();
+  const confirm = useConfirm();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const current = nav.find((n) => n.id === active)?.label;
@@ -139,6 +141,18 @@ export function AppShell({ nav, active, onNavigate, children }: AppShellProps) {
     setMobileOpen(false);
   };
 
+  const handleLogout = async (fromMobile = false) => {
+    const confirmed = await confirm({
+      title: 'Log out?',
+      message: 'Are you sure you want to log out?',
+      confirmLabel: 'Log out',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    if (fromMobile) setMobileOpen(false);
+    logout();
+  };
+
   return (
     <div className="min-h-screen md:flex">
       <aside className={`hidden md:flex md:flex-col bg-linear-to-b from-gym-maroon to-gym-crimson text-white md:shrink-0 md:h-screen md:sticky md:top-0 transition-all duration-200 ${collapsed ? 'md:w-16' : 'md:w-60'}`}>
@@ -151,7 +165,7 @@ export function AppShell({ nav, active, onNavigate, children }: AppShellProps) {
           userRole={user?.role}
           onNavigate={go}
           onClose={() => setMobileOpen(false)}
-          onLogout={logout}
+          onLogout={handleLogout}
           onToggleCollapsed={() => setCollapsed((c) => !c)}
         />
       </aside>
@@ -172,7 +186,7 @@ export function AppShell({ nav, active, onNavigate, children }: AppShellProps) {
             userRole={user?.role}
             onNavigate={go}
             onClose={() => setMobileOpen(false)}
-            onLogout={() => { setMobileOpen(false); logout(); }}
+            onLogout={() => handleLogout(true)}
             onToggleCollapsed={() => {}}
           />
         </aside>

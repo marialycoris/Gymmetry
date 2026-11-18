@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { STATUSES, type Session } from '../../lib/types';
 import { byDate, fmtDate, fmtTime } from '../../lib/format';
@@ -9,12 +10,14 @@ import { Card } from '../../components/Card';
 import { Select } from '../../components/Select';
 import { Filter } from '../../components/Filter';
 import { Modal } from '../../components/Modal';
-import { Badge, pretty } from '../../components/Badge';
+import { Badge } from '../../components/Badge';
+import { pretty } from '../../components/badgeUtils';
 import { Table, td } from '../../components/Table';
 import { Loading, Notice } from '../../components/Widgets';
 
 export function SessionsTab() {
   const toast = useToast();
+  const confirm = useConfirm();
   const sessions = useAsync(() => api.getSessions({}));
   const trainers = useAsync(() => api.getTrainers());
   const [status, setStatus] = useState('');
@@ -38,6 +41,18 @@ export function SessionsTab() {
     } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(false); }
   };
   const open = (s: Session) => { setTarget(s); setTrainerId(String(trainers.data?.find((t) => t.id !== s.trainerId)?.id ?? '')); };
+
+  const reassign = async () => {
+    if (!target) return;
+    const newTrainer = trainers.data?.find((t) => t.id === Number(trainerId));
+    const confirmed = await confirm({
+      title: 'Reassign session?',
+      message: `Reassign ${target.memberName}'s session to ${newTrainer?.name ?? 'the selected trainer'}?`,
+      confirmLabel: 'Reassign',
+    });
+    if (!confirmed) return;
+    await run(() => api.reassignSession(target.id, Number(trainerId)), 'Session reassigned.');
+  };
 
   return (
     <>
@@ -94,7 +109,7 @@ export function SessionsTab() {
               options={others.map((t) => ({ value: t.id, label: `${t.name} (${t.specialty})` }))} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setTarget(null)} disabled={busy}>Cancel</Button>
-              <Button isLoading={busy} onClick={() => run(() => api.reassignSession(target.id, Number(trainerId)), 'Session reassigned.')}>Reassign</Button>
+              <Button isLoading={busy} onClick={reassign}>Reassign</Button>
             </div>
           </>
         )}

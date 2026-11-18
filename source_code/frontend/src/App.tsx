@@ -1,4 +1,4 @@
-import { useAuth } from './context/AuthContext';
+import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
 import { ChangePassword } from './pages/Changepassword ';
 import { AdminDashboard } from './pages/admin/AdminDashboard';

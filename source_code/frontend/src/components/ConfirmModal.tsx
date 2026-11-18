@@ -1,18 +1,14 @@
-import { useState, type ReactNode } from 'react';
-import { useToast } from '../hooks/useToast';
-import { Modal } from './Modal';
+import { useEffect, type ReactNode } from 'react';
 import { Button } from './Button';
 
 interface ConfirmModalProps {
   isOpen: boolean;
   onClose: () => void;
-  /** Can be async. The modal shows a loading state, then closes when it resolves. */
-  onConfirm: () => void | Promise<unknown>;
+  onConfirm: () => void;
   title: string;
   message: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  successMessage?: string;
   variant?: 'primary' | 'danger';
 }
 
@@ -24,37 +20,32 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
-  successMessage = 'Action completed.',
   variant = 'primary',
 }: ConfirmModalProps) {
-  const toast = useToast();
-  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen, onClose]);
 
-  const close = () => {
-    if (busy) return;
-    onClose();
-  };
-
-  const confirm = async () => {
-    setBusy(true);
-    try {
-      await onConfirm();
-      toast.success(successMessage);
-      onClose();
-    } catch (err: unknown) {
-      toast.error(err instanceof Error ? err.message : 'Something went wrong. Try again.');
-    } finally {
-      setBusy(false);
-    }
-  };
+  if (!isOpen) return null;
 
   return (
-    <Modal isOpen={isOpen} onClose={close} title={title} hideFooter isLoading={busy} loadingLabel="Working…">
-      <div className="text-gray-700 mb-6">{message}</div>
-      <div className="flex justify-end gap-2">
-        <Button variant="secondary" onClick={close} disabled={busy}>{cancelLabel}</Button>
-        <Button variant={variant} onClick={confirm} isLoading={busy}>{confirmLabel}</Button>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div role="dialog" aria-modal="true" aria-label={title} onClick={(e) => e.stopPropagation()}
+        className="relative bg-gym-bg rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 bg-gym-maroon">
+          <h2 className="text-xl font-bold text-white">{title}</h2>
+        </div>
+        <div className="p-6">
+          <div className="text-gray-700 mb-6">{message}</div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={onClose}>{cancelLabel}</Button>
+            <Button variant={variant} onClick={onConfirm}>{confirmLabel}</Button>
+          </div>
+        </div>
       </div>
-    </Modal>
+    </div>
   );
 }

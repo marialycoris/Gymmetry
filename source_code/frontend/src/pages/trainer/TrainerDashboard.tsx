@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { CalendarDays, ClipboardCheck, Inbox, TriangleAlert } from 'lucide-react';
 import { api } from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, fmtDate, fmtTime, today } from '../../lib/format';
@@ -138,6 +139,7 @@ function Overview({ go, pending, upcoming, record }: { go: (id: string) => void;
 export function TrainerDashboard() {
   const { user } = useAuth();
   const toast = useToast();
+  const confirm = useConfirm();
   const trainerId = user!.personId;
   const [tab, setTab] = usePersistentTab('gymmetry_trainer_tab', 'overview', NAV.map((n) => n.id));
   const sessions = useAsync(() => api.getSessions({ trainerId }), [trainerId]);
@@ -161,6 +163,15 @@ export function TrainerDashboard() {
       sessions.reload();
     } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusyId(null); }
   };
+  const accept = async (s: Session) => {
+    const confirmed = await confirm({
+      title: 'Accept session request?',
+      message: `Accept ${s.memberName}'s request for ${fmtDate(s.date)} at ${fmtTime(s.time)}?`,
+      confirmLabel: 'Accept request',
+    });
+    if (!confirmed) return;
+    await run(() => api.respondToSession(s.id, true), `accept-${s.id}`, 'Session request accepted.');
+  };
   const confirmDecline = async () => {
     if (!reason.trim()) return setReasonErr('Tell the member why you are declining.');
     setBusyId('decline');
@@ -175,6 +186,12 @@ export function TrainerDashboard() {
   const openComplete = (s: Session) => { setCompleting(s); setNote(''); };
   const confirmComplete = async () => {
     if (!completing) return;
+    const confirmed = await confirm({
+      title: 'Mark session completed?',
+      message: `Mark ${completing.memberName}'s session as completed?`,
+      confirmLabel: 'Mark completed',
+    });
+    if (!confirmed) return;
     setBusyId('complete');
     try {
       await api.completeSession(completing.id, note);
@@ -202,7 +219,7 @@ export function TrainerDashboard() {
                         size="sm"
                         isLoading={busyId === `accept-${s.id}`}
                         disabled={busyId !== null && busyId !== `accept-${s.id}`}
-                        onClick={() => run(() => api.respondToSession(s.id, true), `accept-${s.id}`, 'Session request accepted.')}
+                        onClick={() => accept(s)}
                       >Accept</Button>{' '}
                       <Button size="sm" variant="secondary" disabled={busyId !== null} onClick={() => openDecline(s)}>Decline</Button>
                     </td>

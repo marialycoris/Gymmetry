@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, USE_MOCK } from "../api/client";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 import { useToast } from "../hooks/useToast";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";

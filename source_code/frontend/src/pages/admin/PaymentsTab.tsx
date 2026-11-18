@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Banknote, CreditCard, TrendingUp, Users, Wallet } from 'lucide-react';
 import { api } from '../../api/client';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { METHODS, PLAN_PRICE, type PayMethod } from '../../lib/types';
 import { fmtDate, money, today } from '../../lib/format';
@@ -17,7 +18,7 @@ import { Modal } from '../../components/Modal';
 import { CreateButton } from '../../components/CreateButton';
 import { BarChart, DonutChart } from '../../components/Charts';
 import { BarList, Loading, Stat } from '../../components/Widgets';
-import { pretty } from '../../components/Badge';
+import { pretty } from '../../components/badgeUtils';
 
 const METHOD_COLORS: Record<PayMethod, string> = { CASH: '#68020F', CARD: '#F21137', E_WALLET: '#FB7185' };
 
@@ -25,6 +26,7 @@ const emptyChart = <p className="py-6 text-center text-sm text-gray-500">No paym
 
 export function PaymentsTab() {
   const toast = useToast();
+  const confirm = useConfirm();
   const members = useAsync(() => api.getMembers());
   const [filter, setFilter] = useState('');
   const [q, setQ] = useState('');
@@ -77,6 +79,13 @@ export function PaymentsTab() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!memberId) return toast.error('Select a member first.');
+    const memberName = members.data?.find((m) => m.id === Number(memberId))?.name ?? 'this member';
+    const confirmed = await confirm({
+      title: 'Record payment?',
+      message: `Record a payment of ${money(Number(amount))} for ${memberName}?`,
+      confirmLabel: 'Record payment',
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       await api.recordPayment({ memberId: Number(memberId), amount: Number(amount), method });

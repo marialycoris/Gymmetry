@@ -1,4 +1,4 @@
-import type { User } from '../context/AuthContext';
+import type { User } from '../context/authState';
 import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, TrainerRegistrationInput, Session, Slot, Payment, Plan, PayMethod, SessionStatus, PulseInsight, Reports, WaitlistEntry, AlternativeSlot, FairSlotInsights } from '../lib/types';
 import { mock } from './mock';
 

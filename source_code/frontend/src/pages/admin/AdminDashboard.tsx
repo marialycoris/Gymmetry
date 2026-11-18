@@ -8,7 +8,7 @@ import { money } from '../../lib/format';
 import { AppShell, type NavItem } from '../../components/AppShell';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
-import { pretty } from '../../components/Badge';
+import { pretty } from '../../components/badgeUtils';
 import { BarChart, DonutChart, StackedBarChart } from '../../components/Charts';
 import { Loading, Notice, Stat } from '../../components/Widgets';
 import { MembersTab } from './MembersTab';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, type HTMLAttributes } from 'react';
+import { useEffect, useMemo, useRef, type HTMLAttributes } from 'react';
 
 export interface ThreadsProps extends Omit<HTMLAttributes<HTMLDivElement>, 'color'> {
   color?: string | [number, number, number];
@@ -241,34 +241,38 @@ const Threads = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wakeRef = useRef<(() => void) | null>(null);
-  const colorKey = `${Array.isArray(color) ? color.join(',') : String(color)}|${
-    Array.isArray(accentColor) ? accentColor.join(',') : String(accentColor ?? '')
-  }`;
-  const settings: Settings = {
-    color,
-    accentColor,
-    colorKey,
-    amplitude,
-    distance,
-    enableMouseInteraction,
-    lineCount: clamp(Math.round(lineCount), 1, 400),
-    thickness: Math.max(0, thickness),
-    softness: Math.max(0, softness),
-    speed,
-    waves: Math.max(0, waves),
-    split: clamp(split, 0, 1),
-    fray: clamp(fray, 0, 1),
-    angle,
-    seed,
-    parting: clamp(parting, 0, 1),
-    taper: clamp(taper, 0, 1),
-    brightness: clamp(brightness, 0.25, 2),
-    fade: clamp(fade, 0, 1),
-    opacity: clamp(opacity, 0, 1),
-    paused
-  };
+  const settings: Settings = useMemo(() => {
+    const colorKey = `${Array.isArray(color) ? color.join(',') : String(color)}|${
+      Array.isArray(accentColor) ? accentColor.join(',') : String(accentColor ?? '')
+    }`;
+    return {
+      color,
+      accentColor,
+      colorKey,
+      amplitude,
+      distance,
+      enableMouseInteraction,
+      lineCount: clamp(Math.round(lineCount), 1, 400),
+      thickness: Math.max(0, thickness),
+      softness: Math.max(0, softness),
+      speed,
+      waves: Math.max(0, waves),
+      split: clamp(split, 0, 1),
+      fray: clamp(fray, 0, 1),
+      angle,
+      seed,
+      parting: clamp(parting, 0, 1),
+      taper: clamp(taper, 0, 1),
+      brightness: clamp(brightness, 0.25, 2),
+      fade: clamp(fade, 0, 1),
+      opacity: clamp(opacity, 0, 1),
+      paused
+    };
+  }, [color, accentColor, amplitude, distance, enableMouseInteraction, lineCount, thickness, softness, speed, waves, split, fray, angle, seed, parting, taper, brightness, fade, opacity, paused]);
   const settingsRef = useRef(settings);
-  settingsRef.current = settings;
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     const container = containerRef.current;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../hooks/useToast';
+import { useConfirm } from '../hooks/useConfirm';
 import { PASSWORD_HINT, passwordError } from '../lib/password';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -14,6 +15,7 @@ interface PasswordResetProps {
 /** Admin-only: set a temporary password that forces a change on the next login. */
 export function PasswordReset({ name, roleLabel, onSubmit }: PasswordResetProps) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,6 +25,13 @@ export function PasswordReset({ name, roleLabel, onSubmit }: PasswordResetProps)
     setErr('');
     const problem = passwordError(password);
     if (problem) { setErr(problem); return; }
+    const confirmed = await confirm({
+      title: 'Set a new password?',
+      message: `Set a new temporary password for ${name}? They will be required to change it at their next login.`,
+      confirmLabel: 'Set password',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
     setBusy(true);
     try {
       await onSubmit(password);

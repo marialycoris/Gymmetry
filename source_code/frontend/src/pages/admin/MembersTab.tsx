@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { GENDERS, PLANS, type Gender, type Member, type MemberRegistrationInput, type MemberStatus, type Plan } from '../../lib/types';
 import { daysUntil, fmtDate } from '../../lib/format';
@@ -12,7 +13,8 @@ import { Select } from '../../components/Select';
 import { Modal } from '../../components/Modal';
 import { MemberProfile } from '../../components/MemberProfile';
 import { MemberPlan } from '../../components/MemberPlan';
-import { Badge, pretty } from '../../components/Badge';
+import { Badge } from '../../components/Badge';
+import { pretty } from '../../components/badgeUtils';
 import { SearchBar } from '../../components/SearchBar';
 import { Filter } from '../../components/Filter';
 import { CreateButton } from '../../components/CreateButton';
@@ -27,6 +29,7 @@ const statusOptions = [{ value: '', label: 'All statuses' }, ...memberStatuses.m
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [f, setF] = useState<MemberRegistrationInput>({
     firstName: '', lastName: '', dateOfBirth: '', gender: 'MALE' as Gender,
     address: '', contactNumber: '', emergencyContactNumber: '', medicalCondition: '',
@@ -40,6 +43,12 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     e.preventDefault();
     const problem = passwordError(f.tempPassword);
     if (problem) { setErr(problem); return; }
+    const confirmed = await confirm({
+      title: 'Register member?',
+      message: `Register ${f.firstName} ${f.lastName} as a new member?`,
+      confirmLabel: 'Register member',
+    });
+    if (!confirmed) return;
     setBusy(true); setErr('');
     try {
       await api.registerMember(f);

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Clock, Inbox, TrendingUp, Users } from 'lucide-react';
 import { api } from '../../api/client';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { fmtDate, fmtTime } from '../../lib/format';
 import { Button } from '../../components/Button';
@@ -12,6 +13,7 @@ import { Loading, Notice, Stat } from '../../components/Widgets';
 
 export function FairSlotTab() {
   const toast = useToast();
+  const confirm = useConfirm();
   const insights = useAsync(() => api.getFairSlotInsights());
   const queue = useAsync(() => api.getWaitlist());
   const [busy, setBusy] = useState<number | null>(null);
@@ -106,7 +108,16 @@ export function FairSlotTab() {
                     </Button>
                   )}
                   <Button size="sm" variant="secondary" disabled={busy === e.id}
-                    onClick={() => run(e.id, () => api.cancelWaitlist(e.id), `Removed ${e.memberName} from the waitlist.`)}>
+                    onClick={async () => {
+                      const confirmed = await confirm({
+                        title: 'Remove waitlist entry?',
+                        message: `Remove ${e.memberName} from the waitlist?`,
+                        confirmLabel: 'Remove',
+                        variant: 'danger',
+                      });
+                      if (!confirmed) return;
+                      await run(e.id, () => api.cancelWaitlist(e.id), `Removed ${e.memberName} from the waitlist.`);
+                    }}>
                     Remove
                   </Button>
                 </div>

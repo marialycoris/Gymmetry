@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
 import { useToast } from '../../hooks/useToast';
+import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { GENDERS, type Gender, type Trainer, type TrainerRegistrationInput } from '../../lib/types';
 import { PASSWORD_HINT, passwordError } from '../../lib/password';
@@ -23,6 +24,7 @@ const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).t
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [f, setF] = useState<TrainerRegistrationInput>({
     firstName: '', lastName: '', email: '', gender: 'MALE' as Gender,
     contactNumber: '', address: '', license: '', specialty: '', username: '', tempPassword: '',
@@ -36,6 +38,12 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     if (!f.specialty.trim()) { setErr('Please choose a specialization.'); return; }
     const problem = passwordError(f.tempPassword);
     if (problem) { setErr(problem); return; }
+    const confirmed = await confirm({
+      title: 'Register trainer?',
+      message: `Register ${f.firstName} ${f.lastName} as a new trainer?`,
+      confirmLabel: 'Register trainer',
+    });
+    if (!confirmed) return;
     setBusy(true); setErr('');
     try {
       await api.registerTrainer(f);
@@ -67,6 +75,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 
 function ManageTrainer({ t, onDone }: { t: Trainer; onDone: () => void }) {
   const toast = useToast();
+  const confirm = useConfirm();
   const [f, setF] = useState({ name: t.name, email: t.email, specialty: t.specialty });
   const [busy, setBusy] = useState(false);
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
@@ -80,6 +89,32 @@ function ManageTrainer({ t, onDone }: { t: Trainer; onDone: () => void }) {
   };
   const dirty = f.name !== t.name || f.email !== t.email || f.specialty !== t.specialty;
 
+  const saveChanges = async () => {
+    const confirmed = await confirm({
+      title: 'Save trainer changes?',
+      message: `Save the changes to ${t.name}'s details?`,
+      confirmLabel: 'Save changes',
+    });
+    if (!confirmed) return;
+    await run(() => api.updateTrainer(t.id, f), 'Trainer details saved.');
+  };
+
+  const setActive = async (active: boolean) => {
+    const confirmed = await confirm(active ? {
+      title: 'Reactivate trainer?',
+      message: `Reactivate ${t.name}'s account? They will be able to log in and receive bookings again.`,
+      confirmLabel: 'Reactivate',
+      variant: 'primary',
+    } : {
+      title: 'Disable trainer?',
+      message: `Disable ${t.name}'s account? They will no longer be able to log in or receive bookings.`,
+      confirmLabel: 'Disable',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    await run(() => api.setTrainerActive(t.id, active), active ? 'Trainer reactivated.' : 'Trainer disabled.');
+  };
+
   return (
     <div className="relative">
       <LoadingOverlay show={busy} label="Saving changes…" />
@@ -87,10 +122,10 @@ function ManageTrainer({ t, onDone }: { t: Trainer; onDone: () => void }) {
       <Input label="Email" type="email" value={f.email} onChange={set('email')} required />
       <Input label="Specialty" value={f.specialty} onChange={set('specialty')} required />
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" disabled={busy || !dirty} onClick={() => run(() => api.updateTrainer(t.id, f), 'Trainer details saved.')}>Save changes</Button>
+        <Button variant="secondary" disabled={busy || !dirty} onClick={saveChanges}>Save changes</Button>
         {t.status === 'DISABLED'
-          ? <Button variant="secondary" disabled={busy} onClick={() => run(() => api.setTrainerActive(t.id, true), 'Trainer reactivated.')}>Reactivate trainer</Button>
-          : <Button variant="danger" disabled={busy} onClick={() => run(() => api.setTrainerActive(t.id, false), 'Trainer disabled.')}>Disable trainer</Button>}
+          ? <Button variant="secondary" disabled={busy} onClick={() => setActive(true)}>Reactivate trainer</Button>
+          : <Button variant="danger" disabled={busy} onClick={() => setActive(false)}>Disable trainer</Button>}
       </div>
       <PasswordReset name={t.name} roleLabel="trainer" onSubmit={(password) => api.setTrainerPassword(t.id, password)} />
     </div>
