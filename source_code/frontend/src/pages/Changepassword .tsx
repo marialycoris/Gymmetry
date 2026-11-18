@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../hooks/useToast';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { Input } from '../components/Input';
@@ -10,6 +11,7 @@ import { PASSWORD_HINT, passwordError } from '../lib/password';
 // Shown instead of the dashboard until the user replaces their temporary password.
 export function ChangePassword() {
   const { user, login, logout } = useAuth();
+  const toast = useToast();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
@@ -25,8 +27,9 @@ export function ChangePassword() {
     try {
       await api.changePassword(user!.username, password);
       login({ ...user!, mustChangePassword: false });
-    } catch (err: any) {
-      setError(err.message || 'Could not change the password.');
+      toast.success('Password changed successfully.');
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Could not change the password.');
     } finally {
       setBusy(false);
     }

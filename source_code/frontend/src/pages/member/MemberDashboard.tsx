@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CalendarDays, ClipboardCheck, IdCard, Inbox, TriangleAlert } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, daysUntil, fmtDate, fmtTime, money, today } from '../../lib/format';
@@ -130,13 +131,13 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
   );
 }
 
-function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: () => void; onDone: (message: string) => void }) {
+function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: () => void; onDone: () => void }) {
+  const toast = useToast();
   const trainers = useAsync(() => api.getTrainers());
   const member = useAsync(() => api.getMember(memberId), [memberId]);
   const [trainerId, setTrainerId] = useState('');
   const [date, setDate] = useState(today());
   const [time, setTime] = useState('');
-  const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const slots = useAsync(() => (trainerId ? api.getSlots(Number(trainerId), date) : Promise.resolve([])), [trainerId, date]);
   const selectedSlot = (slots.data ?? []).find((s) => s.time === time);
@@ -152,24 +153,24 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
     description: SPECIALIZATIONS.find((s) => s.title === t.specialty)?.description,
   }));
 
-  const pickTrainer = (v: string) => { setTrainerId(v); setTime(''); setErr(''); };
+  const pickTrainer = (v: string) => { setTrainerId(v); setTime(''); };
   const pickAlternative = (a: { trainerId: number; time: string }) => {
-    setErr('');
     if (a.trainerId !== Number(trainerId)) setTrainerId(String(a.trainerId));
     setTime(a.time);
   };
 
   const submit = async () => {
-    setBusy(true); setErr('');
+    setBusy(true);
     try {
       if (isFull) {
         const entry = await api.joinWaitlist({ memberId, trainerId: Number(trainerId), date, time });
-        onDone(`You joined the waitlist for ${fmtDate(date)} at ${fmtTime(time)}. Position #${entry.position} — we will offer you the slot when it opens.`);
+        toast.success(`You joined the waitlist for ${fmtDate(date)} at ${fmtTime(time)}. Position #${entry.position} — we will offer you the slot when it opens.`);
       } else {
         await api.bookSession({ memberId, trainerId: Number(trainerId), date, time });
-        onDone('Request sent. You will see the trainer\'s answer in this list once they respond.');
+        toast.success('Request sent. You will see the trainer\'s answer in this list once they respond.');
       }
-    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(false); }
+      onDone();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(false); }
   };
 
   return (
@@ -177,7 +178,6 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
       {trainers.loading || member.loading ? <Loading /> : (
         <>
           {!canBook && <Notice tone="warn">Only active memberships can book sessions. Renew at the front desk first.</Notice>}
-          {err && <Notice tone="error">{err}</Notice>}
           <SearchableSelect label="Trainer" value={trainerId} onChange={pickTrainer} options={trainerOptions} placeholder="Search trainers..." />
           <Input label="Date" type="date" min={today()} value={date} onChange={(e) => { setDate(e.target.value); setTime(''); }} className="max-w-xs" />
           {!trainerId ? <p className="text-gray-500">Choose a trainer to see open times.</p> : slots.loading ? <Loading /> : (
@@ -185,7 +185,7 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
               <p className="mb-2 text-sm text-gray-500">Pick a time. Fully booked times can be joined through the FairSlot waitlist.</p>
               <div className="flex flex-wrap gap-2">
                 {(slots.data ?? []).map((s) => (
-                  <button key={s.time} aria-pressed={time === s.time} onClick={() => { setTime(s.time); setErr(''); }}
+                  <button key={s.time} aria-pressed={time === s.time} onClick={() => setTime(s.time)}
                     title={s.available ? 'Open slot' : 'Fully booked — join the waitlist'}
                     className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gym-crimson ${!s.available ? 'border-dashed' : ''} ${time === s.time ? 'border-gym-crimson bg-gym-crimson text-white' : s.available ? 'border-gray-200 hover:border-gray-400' : 'border-gray-300 text-gray-500 hover:border-gym-crimson'}`}>
                     <span className="block">{fmtTime(s.time)}</span>
@@ -229,17 +229,15 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
 function MySessions({ memberId }: { memberId: number }) {
   const { data, loading, error, reload } = useAsync(() => api.getSessions({ memberId }), [memberId]);
   const [booking, setBooking] = useState(false);
-  const [notice, setNotice] = useState('');
   if (loading) return <Loading />;
   const list = [...(data ?? [])].sort(byDate).reverse();
   return (
     <>
       {error && <Notice tone="error">{error}</Notice>}
-      {notice && <Notice tone="success">{notice}</Notice>}
       <Card
         title="My sessions"
         headerTone="maroon"
-        action={<Button size="sm" onClick={() => { setNotice(''); setBooking(true); }}>Book a session</Button>}
+        action={<Button size="sm" onClick={() => setBooking(true)}>Book a session</Button>}
       >
         <Table headers={['When', 'Trainer', 'Status', 'Note']} isEmpty={list.length === 0} emptyText="You have not booked a session yet." pageSize={5} itemLabel="sessions">
           {list.map((s) => (
@@ -256,7 +254,7 @@ function MySessions({ memberId }: { memberId: number }) {
         <BookModal
           memberId={memberId}
           onClose={() => setBooking(false)}
-          onDone={(message) => { setBooking(false); setNotice(message); reload(); }}
+          onDone={() => { setBooking(false); reload(); }}
         />
       )}
     </>
@@ -264,36 +262,33 @@ function MySessions({ memberId }: { memberId: number }) {
 }
 
 function MyWaitlist({ memberId, onFind }: { memberId: number; onFind: () => void }) {
+  const toast = useToast();
   const { data, loading, error, reload } = useAsync(() => api.getWaitlist(memberId), [memberId]);
   const [busy, setBusy] = useState<number | null>(null);
-  const [notice, setNotice] = useState('');
-  const [err, setErr] = useState('');
   if (loading) return <Loading />;
   const list = [...(data ?? [])].sort((a, b) => `${b.date}${b.time}`.localeCompare(`${a.date}${a.time}`));
 
   const claim = async (id: number) => {
-    setBusy(id); setErr(''); setNotice('');
+    setBusy(id);
     try {
       await api.claimWaitlist(id);
-      setNotice('Your offer was claimed. The session is now in My sessions.');
+      toast.success('Your offer was claimed. The session is now in My sessions.');
       reload();
-    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
   };
 
   const leave = async (id: number) => {
-    setBusy(id); setErr(''); setNotice('');
+    setBusy(id);
     try {
       await api.cancelWaitlist(id);
-      setNotice('You left the waitlist.');
+      toast.success('You left the waitlist.');
       reload();
-    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
   };
 
   return (
     <>
       {error && <Notice tone="error">{error}</Notice>}
-      {err && <Notice tone="error">{err}</Notice>}
-      {notice && <Notice tone="success">{notice}</Notice>}
       <Card
         title="FairSlot waitlist"
         headerTone="maroon"

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useToast } from '../hooks/useToast';
 import { PASSWORD_HINT, passwordError } from '../lib/password';
 import { Button } from './Button';
 import { Input } from './Input';
@@ -12,23 +13,23 @@ interface PasswordResetProps {
 
 /** Admin-only: set a temporary password that forces a change on the next login. */
 export function PasswordReset({ name, roleLabel, onSubmit }: PasswordResetProps) {
+  const toast = useToast();
   const [password, setPassword] = useState('');
   const [err, setErr] = useState('');
-  const [done, setDone] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErr(''); setDone(false);
+    setErr('');
     const problem = passwordError(password);
     if (problem) { setErr(problem); return; }
     setBusy(true);
     try {
       await onSubmit(password);
       setPassword('');
-      setDone(true);
+      toast.success(`Temporary password set. Ask the ${roleLabel} to log in and change it.`);
     } catch (x) {
-      setErr(x instanceof Error ? x.message : 'Could not set the password.');
+      toast.error(x instanceof Error ? x.message : 'Could not set the password.');
     } finally {
       setBusy(false);
     }
@@ -41,7 +42,6 @@ export function PasswordReset({ name, roleLabel, onSubmit }: PasswordResetProps)
         Set a temporary password for {name}. The {roleLabel} must change it the next time they log in.
       </p>
       {err && <Notice tone="error">{err}</Notice>}
-      {done && <Notice tone="success">Temporary password set. Ask the {roleLabel} to log in and change it.</Notice>}
       <form onSubmit={submit}>
         <Input label="Temporary password" type="text" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         <p className="text-xs text-gray-500 -mt-2 mb-4">{PASSWORD_HINT}</p>

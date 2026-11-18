@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
+import { useToast } from '../hooks/useToast';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import { Notice } from './Widgets';
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -12,6 +12,7 @@ interface ConfirmModalProps {
   message: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  successMessage?: string;
   variant?: 'primary' | 'danger';
 }
 
@@ -23,25 +24,25 @@ export function ConfirmModal({
   message,
   confirmLabel = 'Confirm',
   cancelLabel = 'Cancel',
+  successMessage = 'Action completed.',
   variant = 'primary',
 }: ConfirmModalProps) {
+  const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
 
   const close = () => {
-    if (busy) return; // don't dismiss mid-request
-    setError('');
+    if (busy) return;
     onClose();
   };
 
   const confirm = async () => {
     setBusy(true);
-    setError('');
     try {
       await onConfirm();
+      toast.success(successMessage);
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong. Try again.'); // stays open so the user can retry
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Something went wrong. Try again.');
     } finally {
       setBusy(false);
     }
@@ -49,7 +50,6 @@ export function ConfirmModal({
 
   return (
     <Modal isOpen={isOpen} onClose={close} title={title} hideFooter isLoading={busy} loadingLabel="Working…">
-      {error && <Notice tone="error">{error}</Notice>}
       <div className="text-gray-700 mb-6">{message}</div>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={close} disabled={busy}>{cancelLabel}</Button>

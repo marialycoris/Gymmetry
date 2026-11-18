@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { GENDERS, PLANS, type Gender, type Member, type MemberRegistrationInput, type MemberStatus, type Plan } from '../../lib/types';
 import { daysUntil, fmtDate } from '../../lib/format';
@@ -25,6 +26,7 @@ const memberStatuses: MemberStatus[] = ['ACTIVE', 'EXPIRED', 'DISABLED'];
 const statusOptions = [{ value: '', label: 'All statuses' }, ...memberStatuses.map((s) => ({ value: s, label: pretty(s) }))];
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
   const [f, setF] = useState<MemberRegistrationInput>({
     firstName: '', lastName: '', dateOfBirth: '', gender: 'MALE' as Gender,
     address: '', contactNumber: '', emergencyContactNumber: '', medicalCondition: '',
@@ -39,7 +41,11 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     const problem = passwordError(f.tempPassword);
     if (problem) { setErr(problem); return; }
     setBusy(true); setErr('');
-    try { await api.registerMember(f); onDone(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
+    try {
+      await api.registerMember(f);
+      toast.success('Member registered.');
+      onDone();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Could not register the member.'); } finally { setBusy(false); }
   };
   return (
     <form onSubmit={submit} className="relative">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Clock, Inbox, TrendingUp, Users } from 'lucide-react';
 import { api } from '../../api/client';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { fmtDate, fmtTime } from '../../lib/format';
 import { Button } from '../../components/Button';
@@ -10,11 +11,10 @@ import { Table, td } from '../../components/Table';
 import { Loading, Notice, Stat } from '../../components/Widgets';
 
 export function FairSlotTab() {
+  const toast = useToast();
   const insights = useAsync(() => api.getFairSlotInsights());
   const queue = useAsync(() => api.getWaitlist());
   const [busy, setBusy] = useState<number | null>(null);
-  const [notice, setNotice] = useState('');
-  const [err, setErr] = useState('');
 
   if (insights.loading || queue.loading) return <Loading />;
   const i = insights.data;
@@ -25,20 +25,18 @@ export function FairSlotTab() {
     .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
 
   const run = async (id: number, action: () => Promise<void>, message: string) => {
-    setBusy(id); setErr(''); setNotice('');
+    setBusy(id);
     try {
       await action();
-      setNotice(message);
+      toast.success(message);
       queue.reload();
       insights.reload();
-    } catch (x) { setErr(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(null); }
   };
 
   return (
     <>
       {queue.error && <Notice tone="error">{queue.error}</Notice>}
-      {err && <Notice tone="error">{err}</Notice>}
-      {notice && <Notice tone="success">{notice}</Notice>}
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Active entries" value={i.activeEntries} hint="Waiting or holding an offer" icon={<Inbox className="h-5 w-5" />} />

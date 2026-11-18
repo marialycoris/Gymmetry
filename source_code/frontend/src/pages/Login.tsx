@@ -1,26 +1,25 @@
 import { useState } from "react";
 import { api, USE_MOCK } from "../api/client";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../hooks/useToast";
 import { Button } from "../components/Button";
 import { Input } from "../components/Input";
-import { Notice } from "../components/Widgets";
 import Threads from "../components/Threads";
 
 export function Login() {
   const { login } = useAuth();
+  const toast = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setIsLoading(true);
     try {
       login(await api.login(username, password)); // saves to AuthContext
-    } catch (err: any) {
-      setError(err.message || "Login failed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Login failed");
     } finally {
       setIsLoading(false);
     }
@@ -70,7 +69,6 @@ export function Login() {
           <h2 className="font-display text-4xl font-extrabold uppercase mb-6">
             Log in
           </h2>
-          {error && <Notice tone="error">{error}</Notice>}
           <Input
             label="Username"
             autoComplete="username"

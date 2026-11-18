@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { STATUSES, type Session } from '../../lib/types';
 import { byDate, fmtDate, fmtTime } from '../../lib/format';
@@ -13,12 +14,12 @@ import { Table, td } from '../../components/Table';
 import { Loading, Notice } from '../../components/Widgets';
 
 export function SessionsTab() {
+  const toast = useToast();
   const sessions = useAsync(() => api.getSessions({}));
   const trainers = useAsync(() => api.getTrainers());
   const [status, setStatus] = useState('');
   const [target, setTarget] = useState<Session | null>(null);
   const [trainerId, setTrainerId] = useState('');
-  const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
 
   if (sessions.loading || trainers.loading) return <Loading />;
@@ -27,16 +28,20 @@ export function SessionsTab() {
   const shown = all.filter((s) => !status || s.status === status);
   const others = (trainers.data ?? []).filter((t) => t.id !== target?.trainerId);
 
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true); setErr('');
-    try { await fn(); setTarget(null); sessions.reload(); } catch (x: any) { setErr(x.message); } finally { setBusy(false); }
+  const run = async (fn: () => Promise<unknown>, message: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      setTarget(null);
+      toast.success(message);
+      sessions.reload();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusy(false); }
   };
-  const open = (s: Session) => { setErr(''); setTarget(s); setTrainerId(String(trainers.data?.find((t) => t.id !== s.trainerId)?.id ?? '')); };
+  const open = (s: Session) => { setTarget(s); setTrainerId(String(trainers.data?.find((t) => t.id !== s.trainerId)?.id ?? '')); };
 
   return (
     <>
       {sessions.error && <Notice tone="error">{sessions.error}</Notice>}
-      {err && !target && <Notice tone="error">{err}</Notice>}
 
       <Card title={`Declined sessions (${declined.length})`} headerTone="maroon">
         <Table headers={['When', 'Member', 'Declined by', 'Reason', '']} isEmpty={declined.length === 0} emptyText="No declined sessions to review." pageSize={5} itemLabel="declined sessions">
@@ -71,8 +76,8 @@ export function SessionsTab() {
               <td className={td}>{s.trainerName}</td>
               <td className={td}><Badge value={s.status} /></td>
               <td className={td}>
-                {s.status === 'COMPLETED' && <Button size="sm" variant="secondary" onClick={() => run(() => api.overrideAttendance(s.id, 'NOT_HELD'))}>Change to not held</Button>}
-                {s.status === 'NOT_HELD' && <Button size="sm" variant="secondary" onClick={() => run(() => api.overrideAttendance(s.id, 'COMPLETED'))}>Change to completed</Button>}
+                {s.status === 'COMPLETED' && <Button size="sm" variant="secondary" onClick={() => run(() => api.overrideAttendance(s.id, 'NOT_HELD'), 'Attendance changed to not held.')}>Change to not held</Button>}
+                {s.status === 'NOT_HELD' && <Button size="sm" variant="secondary" onClick={() => run(() => api.overrideAttendance(s.id, 'COMPLETED'), 'Attendance changed to completed.')}>Change to completed</Button>}
               </td>
             </tr>
           ))}
@@ -85,12 +90,11 @@ export function SessionsTab() {
             <p className="text-sm text-gray-600 mb-4">
               {target.memberName}, {fmtDate(target.date)} at {fmtTime(target.time)}. {target.trainerName} declined: “{target.declineReason}”
             </p>
-            {err && <Notice tone="error">{err}</Notice>}
             <Select label="New trainer" value={trainerId} onChange={(e) => setTrainerId(e.target.value)}
               options={others.map((t) => ({ value: t.id, label: `${t.name} (${t.specialty})` }))} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setTarget(null)} disabled={busy}>Cancel</Button>
-              <Button isLoading={busy} onClick={() => run(() => api.reassignSession(target.id, Number(trainerId)))}>Reassign</Button>
+              <Button isLoading={busy} onClick={() => run(() => api.reassignSession(target.id, Number(trainerId)), 'Session reassigned.')}>Reassign</Button>
             </div>
           </>
         )}

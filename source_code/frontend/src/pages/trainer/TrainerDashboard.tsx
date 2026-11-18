@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CalendarDays, ClipboardCheck, Inbox, TriangleAlert } from 'lucide-react';
 import { api } from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, fmtDate, fmtTime, today } from '../../lib/format';
@@ -136,16 +137,15 @@ function Overview({ go, pending, upcoming, record }: { go: (id: string) => void;
 
 export function TrainerDashboard() {
   const { user } = useAuth();
+  const toast = useToast();
   const trainerId = user!.personId;
   const [tab, setTab] = usePersistentTab('gymmetry_trainer_tab', 'overview', NAV.map((n) => n.id));
   const sessions = useAsync(() => api.getSessions({ trainerId }), [trainerId]);
-  const [err, setErr] = useState('');
   const [declining, setDeclining] = useState<Session | null>(null);
   const [reason, setReason] = useState('');
   const [reasonErr, setReasonErr] = useState('');
   const [completing, setCompleting] = useState<Session | null>(null);
   const [note, setNote] = useState('');
-  const [completeErr, setCompleteErr] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
 
   const all = [...(sessions.data ?? [])].sort(byDate);
@@ -153,34 +153,40 @@ export function TrainerDashboard() {
   const upcoming = all.filter((s) => s.status === 'ACCEPTED');
   const record = all.filter((s) => ['COMPLETED', 'NOT_HELD', 'DECLINED'].includes(s.status)).reverse();
 
-  const run = async (fn: () => Promise<unknown>, id: string) => {
+  const run = async (fn: () => Promise<unknown>, id: string, message: string) => {
     setBusyId(id);
-    setErr('');
-    try { await fn(); sessions.reload(); } catch (x: any) { setErr(x.message); } finally { setBusyId(null); }
+    try {
+      await fn();
+      toast.success(message);
+      sessions.reload();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusyId(null); }
   };
   const confirmDecline = async () => {
     if (!reason.trim()) return setReasonErr('Tell the member why you are declining.');
     setBusyId('decline');
     try {
       await api.respondToSession(declining!.id, false, reason);
-      setDeclining(null); sessions.reload();
-    } catch (x: any) { setReasonErr(x.message); } finally { setBusyId(null); }
+      setDeclining(null);
+      toast.success('Session request declined.');
+      sessions.reload();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Could not decline the session.'); } finally { setBusyId(null); }
   };
   const openDecline = (s: Session) => { setDeclining(s); setReason(''); setReasonErr(''); };
-  const openComplete = (s: Session) => { setCompleting(s); setNote(''); setCompleteErr(''); };
+  const openComplete = (s: Session) => { setCompleting(s); setNote(''); };
   const confirmComplete = async () => {
     if (!completing) return;
     setBusyId('complete');
-    setCompleteErr('');
     try {
       await api.completeSession(completing.id, note);
-      setCompleting(null); sessions.reload();
-    } catch (x) { setCompleteErr(x instanceof Error ? x.message : String(x)); } finally { setBusyId(null); }
+      setCompleting(null);
+      toast.success('Session marked completed.');
+      sessions.reload();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Could not mark the session completed.'); } finally { setBusyId(null); }
   };
 
   return (
     <AppShell nav={NAV} active={tab} onNavigate={setTab}>
-      {(sessions.error || err) && <Notice tone="error">{sessions.error || err}</Notice>}
+      {sessions.error && <Notice tone="error">{sessions.error}</Notice>}
       {sessions.loading ? <Loading /> : (
         <>
           {tab === 'overview' && <Overview go={setTab} pending={pending} upcoming={upcoming} record={record} />}
@@ -196,7 +202,7 @@ export function TrainerDashboard() {
                         size="sm"
                         isLoading={busyId === `accept-${s.id}`}
                         disabled={busyId !== null && busyId !== `accept-${s.id}`}
-                        onClick={() => run(() => api.respondToSession(s.id, true), `accept-${s.id}`)}
+                        onClick={() => run(() => api.respondToSession(s.id, true), `accept-${s.id}`, 'Session request accepted.')}
                       >Accept</Button>{' '}
                       <Button size="sm" variant="secondary" disabled={busyId !== null} onClick={() => openDecline(s)}>Decline</Button>
                     </td>
@@ -285,7 +291,6 @@ export function TrainerDashboard() {
         {completing && (
           <>
             <p className="text-sm text-gray-600 mb-4">{completing.memberName}, {fmtDate(completing.date)} at {fmtTime(completing.time)}.</p>
-            {completeErr && <Notice tone="error">{completeErr}</Notice>}
             <Input label="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} placeholder="How did the session go?" />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setCompleting(null)} disabled={busyId === 'complete'}>Cancel</Button>

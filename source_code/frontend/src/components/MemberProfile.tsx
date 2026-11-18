@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { api } from '../api/client';
+import { useToast } from '../hooks/useToast';
 import { GENDERS, type Member, type MemberUpdateInput } from '../lib/types';
 import { fmtDate } from '../lib/format';
 import { Button } from './Button';
 import { Input } from './Input';
 import { Select } from './Select';
 import { LoadingOverlay } from './Spinner';
-import { Notice } from './Widgets';
 import { PasswordReset } from './PasswordReset';
 
 const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).toLowerCase() }));
@@ -30,25 +30,26 @@ interface MemberProfileProps {
 
 /** Read-only member details with an Edit toggle. Reusable anywhere a Member is shown. */
 export function MemberProfile({ member, onSaved }: MemberProfileProps) {
+  const toast = useToast();
   const [editing, setEditing] = useState(false);
   const [f, setF] = useState<MemberUpdateInput>(() => toInput(member));
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
 
   const set = (k: keyof MemberUpdateInput) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setF({ ...f, [k]: e.target.value });
-  const cancel = () => { setF(toInput(member)); setEditing(false); setErr(''); };
+  const cancel = () => { setF(toInput(member)); setEditing(false); };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setBusy(true); setErr('');
+    setBusy(true);
     try {
       const updated = await api.updateMember(member.id, f);
       setF(toInput(updated));
       setEditing(false);
+      toast.success('Profile updated.');
       onSaved?.(updated);
     } catch (x) {
-      setErr(x instanceof Error ? x.message : 'Could not save changes.');
+      toast.error(x instanceof Error ? x.message : 'Could not save changes.');
     } finally {
       setBusy(false);
     }
@@ -58,7 +59,6 @@ export function MemberProfile({ member, onSaved }: MemberProfileProps) {
     <>
       <form onSubmit={submit} className="relative">
         <LoadingOverlay show={busy} label="Saving changes…" />
-      {err && <Notice tone="error">{err}</Notice>}
       <div className="grid grid-cols-2 gap-x-4">
         <Input label="First name" value={f.firstName} onChange={set('firstName')} disabled={!editing} required />
         <Input label="Last name" value={f.lastName} onChange={set('lastName')} disabled={!editing} required />

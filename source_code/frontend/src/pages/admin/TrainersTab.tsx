@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../../api/client';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { GENDERS, type Gender, type Trainer, type TrainerRegistrationInput } from '../../lib/types';
 import { PASSWORD_HINT, passwordError } from '../../lib/password';
@@ -21,6 +22,7 @@ const errorText = (x: unknown) => (x instanceof Error ? x.message : String(x));
 const genderOptions = GENDERS.map((g) => ({ value: g, label: g[0] + g.slice(1).toLowerCase() }));
 
 function RegisterForm({ onDone }: { onDone: () => void }) {
+  const toast = useToast();
   const [f, setF] = useState<TrainerRegistrationInput>({
     firstName: '', lastName: '', email: '', gender: 'MALE' as Gender,
     contactNumber: '', address: '', license: '', specialty: '', username: '', tempPassword: '',
@@ -35,7 +37,11 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
     const problem = passwordError(f.tempPassword);
     if (problem) { setErr(problem); return; }
     setBusy(true); setErr('');
-    try { await api.registerTrainer(f); onDone(); } catch (x) { setErr(errorText(x)); } finally { setBusy(false); }
+    try {
+      await api.registerTrainer(f);
+      toast.success('Trainer registered.');
+      onDone();
+    } catch (x) { toast.error(errorText(x)); } finally { setBusy(false); }
   };
   return (
     <form onSubmit={submit} className="relative">
@@ -60,28 +66,31 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
 }
 
 function ManageTrainer({ t, onDone }: { t: Trainer; onDone: () => void }) {
+  const toast = useToast();
   const [f, setF] = useState({ name: t.name, email: t.email, specialty: t.specialty });
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true); setErr('');
-    try { await fn(); onDone(); } catch (x) { setErr(errorText(x)); } finally { setBusy(false); }
+  const run = async (fn: () => Promise<unknown>, message: string) => {
+    setBusy(true);
+    try {
+      await fn();
+      toast.success(message);
+      onDone();
+    } catch (x) { toast.error(errorText(x)); } finally { setBusy(false); }
   };
   const dirty = f.name !== t.name || f.email !== t.email || f.specialty !== t.specialty;
 
   return (
     <div className="relative">
       <LoadingOverlay show={busy} label="Saving changes…" />
-      {err && <Notice tone="error">{err}</Notice>}
       <Input label="Full name" value={f.name} onChange={set('name')} required />
       <Input label="Email" type="email" value={f.email} onChange={set('email')} required />
       <Input label="Specialty" value={f.specialty} onChange={set('specialty')} required />
       <div className="flex flex-wrap gap-2">
-        <Button variant="secondary" disabled={busy || !dirty} onClick={() => run(() => api.updateTrainer(t.id, f))}>Save changes</Button>
+        <Button variant="secondary" disabled={busy || !dirty} onClick={() => run(() => api.updateTrainer(t.id, f), 'Trainer details saved.')}>Save changes</Button>
         {t.status === 'DISABLED'
-          ? <Button variant="secondary" disabled={busy} onClick={() => run(() => api.setTrainerActive(t.id, true))}>Reactivate trainer</Button>
-          : <Button variant="danger" disabled={busy} onClick={() => run(() => api.setTrainerActive(t.id, false))}>Disable trainer</Button>}
+          ? <Button variant="secondary" disabled={busy} onClick={() => run(() => api.setTrainerActive(t.id, true), 'Trainer reactivated.')}>Reactivate trainer</Button>
+          : <Button variant="danger" disabled={busy} onClick={() => run(() => api.setTrainerActive(t.id, false), 'Trainer disabled.')}>Disable trainer</Button>}
       </div>
       <PasswordReset name={t.name} roleLabel="trainer" onSubmit={(password) => api.setTrainerPassword(t.id, password)} />
     </div>

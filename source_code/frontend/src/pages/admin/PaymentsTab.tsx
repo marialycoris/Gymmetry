@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Banknote, CreditCard, TrendingUp, Users, Wallet } from 'lucide-react';
 import { api } from '../../api/client';
+import { useToast } from '../../hooks/useToast';
 import { useAsync } from '../../hooks/useAsync';
 import { METHODS, PLAN_PRICE, type PayMethod } from '../../lib/types';
 import { fmtDate, money, today } from '../../lib/format';
@@ -15,7 +16,7 @@ import { Table, td } from '../../components/Table';
 import { Modal } from '../../components/Modal';
 import { CreateButton } from '../../components/CreateButton';
 import { BarChart, DonutChart } from '../../components/Charts';
-import { BarList, Loading, Notice, Stat } from '../../components/Widgets';
+import { BarList, Loading, Stat } from '../../components/Widgets';
 import { pretty } from '../../components/Badge';
 
 const METHOD_COLORS: Record<PayMethod, string> = { CASH: '#68020F', CARD: '#F21137', E_WALLET: '#FB7185' };
@@ -23,6 +24,7 @@ const METHOD_COLORS: Record<PayMethod, string> = { CASH: '#68020F', CARD: '#F211
 const emptyChart = <p className="py-6 text-center text-sm text-gray-500">No payments recorded yet.</p>;
 
 export function PaymentsTab() {
+  const toast = useToast();
   const members = useAsync(() => api.getMembers());
   const [filter, setFilter] = useState('');
   const [q, setQ] = useState('');
@@ -32,7 +34,6 @@ export function PaymentsTab() {
   const [memberId, setMemberId] = useState('');
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState<PayMethod>('CASH');
-  const [msg, setMsg] = useState<{ tone: 'error' | 'success'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
 
   if (members.loading || payments.loading) return <Loading />;
@@ -71,25 +72,23 @@ export function PaymentsTab() {
     if (m) setAmount(String(PLAN_PRICE[m.plan])); // prefill from the member's plan
   };
 
-  const openRecord = () => { setMsg(null); setRecording(true); };
+  const openRecord = () => setRecording(true);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!memberId) return setMsg({ tone: 'error', text: 'Select a member first.' });
-    setBusy(true); setMsg(null);
+    if (!memberId) return toast.error('Select a member first.');
+    setBusy(true);
     try {
       await api.recordPayment({ memberId: Number(memberId), amount: Number(amount), method });
-      setMsg({ tone: 'success', text: 'Payment recorded.' });
+      toast.success('Payment recorded.');
       setAmount(''); setMemberId('');
       setRecording(false);
       payments.reload();
-    } catch (x: any) { setMsg({ tone: 'error', text: x.message }); } finally { setBusy(false); }
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Could not record the payment.'); } finally { setBusy(false); }
   };
 
   return (
     <>
-      {msg?.tone === 'success' && <Notice tone="success">{msg.text}</Notice>}
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label={filter ? 'Total paid by this member' : 'Total revenue'} value={money(total)} icon={<Banknote className="h-5 w-5" />} />
         <Stat label="Payments recorded" value={list.length} icon={<CreditCard className="h-5 w-5" />} />
@@ -136,7 +135,6 @@ export function PaymentsTab() {
       </Card>
 
       <Modal isOpen={recording} onClose={() => setRecording(false)} title="Record payment" hideFooter isLoading={busy} loadingLabel="Recording payment…">
-        {msg?.tone === 'error' && <Notice tone="error">{msg.text}</Notice>}
         <form onSubmit={submit}>
           <SearchableSelect label="Member" value={memberId} onChange={pickMember} options={memberOptions} placeholder="Search members…" />
           <Input label="Amount (₱)" type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} required />

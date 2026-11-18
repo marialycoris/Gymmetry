@@ -24,8 +24,8 @@ const NAV: NavItem[] = [
   { id: 'trainers', label: 'Trainers' },
   { id: 'payments', label: 'Payments' },
   { id: 'sessions', label: 'Sessions' },
-  { id: 'pulse', label: 'Gymmetry Pulse' },
-  { id: 'fairslot', label: 'Gymmetry FairSlot' },
+  { id: 'pulse', label: 'Pulse' },
+  { id: 'fairslot', label: 'FairSlot' },
 ];
 
 const PULSE_GROUPS: { level: PulseLevel; label: string }[] = [
