@@ -66,7 +66,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       <Input label="License" value={f.license} onChange={set('license')} placeholder="Optional — enter license number if available" />
       <SpecializationSelect label="Specialization" value={f.specialty} onChange={(specialty) => setF({ ...f, specialty })} />
       <Input label="Username" value={f.username} onChange={set('username')} required />
-      <Input label="Temporary password" type="text" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
+      <Input label="Temporary password" type="password" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
       <p className="text-xs text-gray-500 -mt-2 mb-4">{PASSWORD_HINT} The trainer must change it on first login.</p>
       <div className="flex justify-end"><Button type="submit" isLoading={busy}>Register trainer</Button></div>
     </form>

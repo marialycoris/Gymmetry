@@ -195,14 +195,16 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
           <Input label="Date" type="date" min={today()} value={date} onChange={(e) => { setDate(e.target.value); setTime(''); }} className="max-w-xs" />
           {!trainerId ? <p className="text-gray-500">Choose a trainer to see open times.</p> : slots.loading ? <Loading /> : (
             <>
-              <p className="mb-2 text-sm text-gray-500">Pick a time. Fully booked times can be joined through the FairSlot waitlist.</p>
+              <p className="mb-2 text-sm text-gray-500">Pick a time. Slots close when their specialization member limit is reached; full times can join the FairSlot waitlist.</p>
               <div className="flex flex-wrap gap-2">
                 {(slots.data ?? []).map((s) => (
                   <button key={s.time} aria-pressed={time === s.time} onClick={() => setTime(s.time)}
-                    title={s.available ? 'Open slot' : 'Fully booked — join the waitlist'}
+                    title={s.available ? `${s.remaining} of ${s.capacity} spots open` : 'Fully booked — join the waitlist'}
                     className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gym-crimson ${!s.available ? 'border-dashed' : ''} ${time === s.time ? 'border-gym-crimson bg-gym-crimson text-white' : s.available ? 'border-gray-200 hover:border-gray-400' : 'border-gray-300 text-gray-500 hover:border-gym-crimson'}`}>
                     <span className="block">{fmtTime(s.time)}</span>
-                    {!s.available && <span className="block text-[10px] font-bold uppercase tracking-wide">Full</span>}
+                    <span className="block text-[10px] font-bold uppercase tracking-wide">
+                      {s.available ? `${s.remaining}/${s.capacity} left` : 'Full'}
+                    </span>
                   </button>
                 ))}
               </div>

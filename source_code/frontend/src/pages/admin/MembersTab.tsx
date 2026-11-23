@@ -71,7 +71,7 @@ function RegisterForm({ onDone }: { onDone: () => void }) {
       <Input label="Address" value={f.address} onChange={set('address')} placeholder="Optional" />
       <Input label="Medical condition" value={f.medicalCondition} onChange={set('medicalCondition')} placeholder="Diabetes, Hypertension, etc. (leave blank if none)" />
       <Input label="Username" value={f.username} onChange={set('username')} required />
-      <Input label="Temporary password" type="text" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
+      <Input label="Temporary password" type="password" value={f.tempPassword} onChange={set('tempPassword')} required minLength={8} />
       <p className="text-xs text-gray-500 -mt-2 mb-4">{PASSWORD_HINT} The member must change it on first login.</p>
       <Select label="Plan" value={f.plan} onChange={set('plan')} options={planOptions} />
       <div className="flex justify-end"><Button type="submit" isLoading={busy}>Register member</Button></div>

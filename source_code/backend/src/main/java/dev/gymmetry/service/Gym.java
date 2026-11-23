@@ -20,6 +20,16 @@ public class Gym {
             LocalTime.of(16, 0), LocalTime.of(18, 0), LocalTime.of(20, 0));
 
     private static final int WAITLIST_OFFER_HOURS = 24;
+    private static final int DEFAULT_SLOT_CAPACITY = 1;
+    private static final Map<String, Integer> SPECIALIZATION_CAPACITIES = Map.of(
+            "Strength and Conditioning", 3,
+            "Fitness Nutrition / Nutrition Coaching", 1,
+            "Corrective Exercise Specialist (CES)", 1,
+            "Weight Management & Fat Loss", 3,
+            "Senior Fitness", 4,
+            "Youth Fitness", 6,
+            "Group Exercise & Boot Camp", 15,
+            "Bodybuilding / Physique Coaching", 2);
 
     private final MemberRepository memberRepo;
     private final TrainerRepository trainerRepo;
@@ -42,7 +52,8 @@ public class Gym {
         this.authService = authService;
     }
 
-    public record SlotAvailability(LocalTime time, boolean available) {}
+    public record SlotAvailability(LocalTime time, boolean available, int capacity,
+                                   int booked, int remaining) {}
 
     public record AlternativeSlot(int trainerId, String trainerName, String specialty,
                                   LocalDate date, LocalTime time, String kind) {}
@@ -227,6 +238,11 @@ public class Gym {
     // ============================================================
 
     public Session requestSession(int memberId, int trainerId, LocalDateTime when) {
+        return requestSession(memberId, trainerId, when, true);
+    }
+
+    private Session requestSession(int memberId, int trainerId, LocalDateTime when,
+                                   boolean reserveOffers) {
         Member member = findMember(memberId);
         Trainer trainer = findTrainer(trainerId);
 
@@ -238,9 +254,7 @@ public class Gym {
         if (memberHasConflict(member, when)) {
             throw new IllegalStateException("Member already has a session at that time");
         }
-        if (trainerHasConflict(trainer, when)) {
-            throw new IllegalStateException("Trainer already has a session at that time");
-        }
+        requireSlotCapacity(trainer, when, -1, reserveOffers);
 
         Session s = new Session(0, member, trainer, when);
         return sessionRepo.save(s);
@@ -358,6 +372,13 @@ public class Gym {
         if (!memberCanEdit(s)) {
             throw new IllegalStateException("Cannot reschedule — less than 48h remain or session not editable");
         }
+        if (newTime == null || newTrainer == null) {
+            throw new IllegalArgumentException("New time and trainer required");
+        }
+        if (memberHasConflict(s.getMember(), newTime, s.getId())) {
+            throw new IllegalStateException("Member already has a session at that time");
+        }
+        requireSlotCapacity(newTrainer, newTime, s.getId());
         Trainer oldTrainer = s.getTrainer();
         LocalDateTime oldTime = s.getScheduledAt();
         s.reschedule(newTime, newTrainer);
@@ -390,9 +411,7 @@ public class Gym {
         if (s.getTrainer().getId() == newTrainer.getId()) {
             throw new IllegalStateException("Session is already assigned to this trainer");
         }
-        if (trainerHasConflict(newTrainer, s.getScheduledAt())) {
-            throw new IllegalStateException("Trainer already has a session at that time");
-        }
+        requireSlotCapacity(newTrainer, s.getScheduledAt(), s.getId());
         Trainer oldTrainer = s.getTrainer();
         LocalDateTime slotTime = s.getScheduledAt();
         s.reassign(newTrainer);
@@ -431,7 +450,7 @@ public class Gym {
 
     public List<Trainer> getAvailableTrainers(LocalDateTime when) {
         return trainerRepo.findAll().stream()
-                .filter(t -> !trainerHasConflict(t, when))
+                .filter(t -> hasSlotCapacity(t, when, -1, true))
                 .collect(Collectors.toList());
     }
 
@@ -440,21 +459,20 @@ public class Gym {
     // ============================================================
 
     public boolean isSlotAvailable(int trainerId, LocalDateTime when) {
-        return sessionRepo.findAll().stream().noneMatch(s ->
-                s.getTrainer().getId() == trainerId
-                        && s.getScheduledAt().equals(when)
-                        && (s.getStatus() == SessionStatus.REQUESTED
-                            || s.getStatus() == SessionStatus.SCHEDULED));
+        Trainer trainer = findTrainer(trainerId);
+        return hasSlotCapacity(trainer, when, -1, true);
     }
 
     public List<SlotAvailability> getOpenSlots(int trainerId, LocalDate date) {
-        findTrainer(trainerId);
+        Trainer trainer = findTrainer(trainerId);
         LocalDateTime now = LocalDateTime.now();
         List<SlotAvailability> slots = new ArrayList<>();
         for (LocalTime time : BOOKING_SLOTS) {
             LocalDateTime when = date.atTime(time);
-            slots.add(new SlotAvailability(time,
-                    when.isAfter(now) && isSlotAvailable(trainerId, when)));
+            int capacity = slotCapacity(trainer);
+            int booked = (int) occupiedSlots(trainerId, when, -1, true);
+            slots.add(new SlotAvailability(time, when.isAfter(now) && booked < capacity,
+                    capacity, booked, Math.max(0, capacity - booked)));
         }
         return slots;
     }
@@ -502,13 +520,11 @@ public class Gym {
             throw new IllegalArgumentException("Choose a future time to join the waitlist");
         }
         if (isSlotAvailable(trainerId, when)) {
-            throw new IllegalStateException("That time is still open — book it instead");
+            int remaining = slotCapacity(trainer) - (int) occupiedSlots(trainerId, when, -1, true);
+            throw new IllegalStateException("That time still has " + remaining + " open spot"
+                    + (remaining == 1 ? "" : "s") + " — book it instead");
         }
-        boolean memberConflict = sessionRepo.findAll().stream().anyMatch(s ->
-                s.getMember().getId() == memberId
-                        && s.getScheduledAt().equals(when)
-                        && (s.getStatus() == SessionStatus.REQUESTED
-                            || s.getStatus() == SessionStatus.SCHEDULED));
+        boolean memberConflict = memberHasConflict(member, when);
         if (memberConflict) {
             throw new IllegalStateException("You already have a session at that time");
         }
@@ -564,7 +580,7 @@ public class Gym {
             throw new IllegalStateException("This waitlist entry does not have an open offer");
         }
         Session session = requestSession(entry.getMember().getId(),
-                entry.getTrainer().getId(), entry.getScheduledAt());
+                entry.getTrainer().getId(), entry.getScheduledAt(), false);
         entry.book();
         waitlistRepo.update(entry);
         return session;
@@ -661,19 +677,65 @@ public class Gym {
     // ============================================================
 
     private boolean memberHasConflict(Member m, LocalDateTime when) {
+        return memberHasConflict(m, when, -1);
+    }
+
+    private boolean memberHasConflict(Member m, LocalDateTime when, int excludeSessionId) {
         return sessionRepo.findAll().stream().anyMatch(s ->
                 s.getMember().getId() == m.getId()
+                        && s.getId() != excludeSessionId
                         && s.getScheduledAt().equals(when)
                         && (s.getStatus() == SessionStatus.REQUESTED
                             || s.getStatus() == SessionStatus.SCHEDULED));
     }
 
-    private boolean trainerHasConflict(Trainer t, LocalDateTime when) {
-        return sessionRepo.findAll().stream().anyMatch(s ->
-                s.getTrainer().getId() == t.getId()
-                        && s.getScheduledAt().equals(when)
-                        && (s.getStatus() == SessionStatus.REQUESTED
-                            || s.getStatus() == SessionStatus.SCHEDULED));
+    private void requireSlotCapacity(Trainer trainer, LocalDateTime when, int excludeSessionId) {
+        requireSlotCapacity(trainer, when, excludeSessionId, true);
+    }
+
+    private void requireSlotCapacity(Trainer trainer, LocalDateTime when, int excludeSessionId,
+                                     boolean reserveOffers) {
+        if (hasSlotCapacity(trainer, when, excludeSessionId, reserveOffers)) return;
+        String specialty = primarySpecialty(trainer);
+        String label = specialty.isEmpty() ? "this trainer" : specialty;
+        throw new IllegalStateException("This time slot is fully booked for " + label
+                + ". Join the waitlist to get the next opening.");
+    }
+
+    private boolean hasSlotCapacity(Trainer trainer, LocalDateTime when, int excludeSessionId,
+                                    boolean reserveOffers) {
+        return occupiedSlots(trainer.getId(), when, excludeSessionId, reserveOffers) < slotCapacity(trainer);
+    }
+
+    private long occupiedSlots(int trainerId, LocalDateTime when, int excludeSessionId,
+                               boolean includeOffers) {
+        long sessions = activeSessionsForSlot(trainerId, when, excludeSessionId);
+        return includeOffers ? sessions + activeOffersForSlot(trainerId, when) : sessions;
+    }
+
+    private long activeSessionsForSlot(int trainerId, LocalDateTime when, int excludeSessionId) {
+        return sessionRepo.findAll().stream()
+                .filter(s -> s.getId() != excludeSessionId)
+                .filter(s -> s.getTrainer().getId() == trainerId)
+                .filter(s -> s.getScheduledAt().equals(when))
+                .filter(s -> s.getStatus() == SessionStatus.REQUESTED
+                        || s.getStatus() == SessionStatus.SCHEDULED)
+                .count();
+    }
+
+    private long activeOffersForSlot(int trainerId, LocalDateTime when) {
+        return waitlistRepo.findActiveBySlot(trainerId, when).stream()
+                .filter(e -> e.getStatus() == WaitlistStatus.OFFERED && !e.isOfferExpired())
+                .count();
+    }
+
+    private int slotCapacity(Trainer trainer) {
+        return SPECIALIZATION_CAPACITIES.getOrDefault(
+                primarySpecialty(trainer), DEFAULT_SLOT_CAPACITY);
+    }
+
+    private String primarySpecialty(Trainer trainer) {
+        return trainer.getSpecialties().isEmpty() ? "" : trainer.getSpecialties().get(0);
     }
 
     private boolean memberCanEdit(Session s) {

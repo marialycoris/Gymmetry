@@ -103,13 +103,14 @@ public class TrainerController {
         }
     }
 
-    public record SlotDto(String time, boolean available) {}
+    public record SlotDto(String time, boolean available, int capacity, int booked, int remaining) {}
 
     @GetMapping("/{id}/slots")
     public ResponseEntity<?> getSlots(@PathVariable int id, @RequestParam String date) {
         try {
             return ResponseEntity.ok(gym.getOpenSlots(id, LocalDate.parse(date)).stream()
-                    .map(s -> new SlotDto(s.time().toString(), s.available()))
+                    .map(s -> new SlotDto(s.time().toString(), s.available(), s.capacity(),
+                            s.booked(), s.remaining()))
                     .toList());
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());

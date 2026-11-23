@@ -4,6 +4,7 @@ import type { Member, MemberRegistrationInput, MemberUpdateInput, Trainer, Train
 import { METHODS, PLANS, STATUSES } from '../lib/types';
 import type { User } from '../context/authState';
 import { passwordError } from '../lib/password';
+import { specializationCapacity } from '../lib/specializations';
 
 const iso = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toLocaleDateString('en-CA'); };
 const since = (date: string) => Math.round((new Date(iso()).getTime() - new Date(date).getTime()) / 864e5);
@@ -73,9 +74,19 @@ const isOpen = (s: Session) => s.status !== 'DECLINED';
 const member = (id: number) => { const m = members.find((x) => x.id === id); if (!m) throw new Error('Member not found.'); return m; };
 const trainer = (id: number) => { const t = trainers.find((x) => x.id === id); if (!t) throw new Error('Trainer not found.'); return t; };
 const session = (id: number) => { const s = sessions.find((x) => x.id === id); if (!s) throw new Error('Session not found.'); return s; };
-const slotTaken = (trainerId: number, date: string, time: string) =>
-  sessions.some((s) => s.trainerId === trainerId && s.date === date && s.time === time && isOpen(s));
+const slotCapacity = (trainerId: number) => specializationCapacity(trainer(trainerId).specialty);
+const slotBookedCount = (trainerId: number, date: string, time: string) =>
+  sessions.filter((s) => s.trainerId === trainerId && s.date === date && s.time === time && isOpen(s)).length;
 const activeWaitlist = (e: WaitlistEntry) => e.status === 'WAITING' || e.status === 'OFFERED';
+const activeOffersForSlot = (trainerId: number, date: string, time: string) =>
+  waitlist.filter((e) => e.status === 'OFFERED' && e.trainerId === trainerId && e.date === date && e.time === time &&
+    !!e.offerExpiresAt && new Date(e.offerExpiresAt).getTime() > Date.now()).length;
+const slotOccupiedCount = (trainerId: number, date: string, time: string) =>
+  slotBookedCount(trainerId, date, time) + activeOffersForSlot(trainerId, date, time);
+const slotTaken = (trainerId: number, date: string, time: string) =>
+  slotOccupiedCount(trainerId, date, time) >= slotCapacity(trainerId);
+const slotBookedFull = (trainerId: number, date: string, time: string) =>
+  slotBookedCount(trainerId, date, time) >= slotCapacity(trainerId);
 const waitlistPosition = (entry: WaitlistEntry) => {
   if (!activeWaitlist(entry)) return 0;
   return waitlist
@@ -256,11 +267,15 @@ export const mock = {
     }
     user.mustChangePassword = true;
   },
-  getSlots: (trainerId: number, date: string) => SLOTS.map((time) => ({ time, available: !slotTaken(trainerId, date, time) })),
+  getSlots: (trainerId: number, date: string) => SLOTS.map((time) => {
+    const capacity = slotCapacity(trainerId);
+    const booked = slotOccupiedCount(trainerId, date, time);
+    return { time, available: booked < capacity, capacity, booked, remaining: Math.max(0, capacity - booked) };
+  }),
   bookSession(i: { memberId: number; trainerId: number; date: string; time: string }) {
     if (member(i.memberId).status !== 'ACTIVE') throw new Error('Only active members can book sessions.');
     if (trainer(i.trainerId).status !== 'ACTIVE') throw new Error('That trainer is not available for booking.');
-    if (slotTaken(i.trainerId, i.date, i.time)) throw new Error('That slot was just taken. Pick another time.');
+    if (slotTaken(i.trainerId, i.date, i.time)) throw new Error(`That time is already full for ${trainer(i.trainerId).specialty}. Join the waitlist for the next opening.`);
     if (sessions.some((s) => s.memberId === i.memberId && s.date === i.date && s.time === i.time && isOpen(s)))
       throw new Error('You already have a session at this time.');
     const s = mk(++seq, i.memberId, i.trainerId, 0, i.time, 'PENDING'); s.date = i.date;
@@ -278,7 +293,7 @@ export const mock = {
   },
   reassignSession(id: number, trainerId: number): void {
     const s = session(id);
-    if (slotTaken(trainerId, s.date, s.time)) throw new Error(`${trainerName(trainerId)} is already booked at that time.`);
+    if (slotTaken(trainerId, s.date, s.time)) throw new Error(`That time is already full for ${trainer(trainerId).specialty}.`);
     const oldTrainerId = s.trainerId;
     Object.assign(s, { trainerId, trainerName: trainerName(trainerId), status: 'PENDING', declineReason: undefined });
     offerNext(oldTrainerId, s.date, s.time);
@@ -298,7 +313,10 @@ export const mock = {
     const t = trainer(i.trainerId);
     if (m.status !== 'ACTIVE') throw new Error('Only active members can join a waitlist.');
     if (t.status !== 'ACTIVE') throw new Error('That trainer is not available for booking.');
-    if (!slotTaken(i.trainerId, i.date, i.time)) throw new Error('That slot is open — book it directly.');
+    if (!slotTaken(i.trainerId, i.date, i.time)) {
+      const remaining = slotCapacity(i.trainerId) - slotOccupiedCount(i.trainerId, i.date, i.time);
+      throw new Error(`That time still has ${remaining} open spot${remaining === 1 ? '' : 's'} — book it directly.`);
+    }
     if (waitlist.some((e) => activeWaitlist(e) && e.memberId === i.memberId &&
       e.trainerId === i.trainerId && e.date === i.date && e.time === i.time)) {
       throw new Error('You are already on the waitlist for this slot.');
@@ -332,7 +350,7 @@ export const mock = {
     expireOffers();
     const entry = waitlistEntry(id);
     if (entry.status !== 'OFFERED') throw new Error('This waitlist entry has no active offer.');
-    if (slotTaken(entry.trainerId, entry.date, entry.time)) throw new Error('That slot was just taken.');
+    if (slotBookedFull(entry.trainerId, entry.date, entry.time)) throw new Error('That time is already full.');
     if (sessions.some((s) => s.memberId === entry.memberId && s.date === entry.date &&
       s.time === entry.time && isOpen(s))) {
       throw new Error('You already have a session at this time.');

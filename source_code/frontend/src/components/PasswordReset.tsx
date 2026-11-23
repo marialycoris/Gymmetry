@@ -52,7 +52,7 @@ export function PasswordReset({ name, roleLabel, onSubmit }: PasswordResetProps)
       </p>
       {err && <Notice tone="error">{err}</Notice>}
       <form onSubmit={submit}>
-        <Input label="Temporary password" type="text" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
+        <Input label="Temporary password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={8} />
         <p className="text-xs text-gray-500 -mt-2 mb-4">{PASSWORD_HINT}</p>
         <div className="flex justify-end"><Button type="submit" variant="secondary" isLoading={busy}>Set password</Button></div>
       </form>

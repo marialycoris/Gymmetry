@@ -97,3 +97,17 @@ CREATE TABLE IF NOT EXISTS attendance (
     session_id      INT NOT NULL REFERENCES sessions(id),
     recorded_at     TIMESTAMP NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS waitlist (
+    id                  SERIAL PRIMARY KEY,
+    member_id           INT NOT NULL REFERENCES members(id),
+    trainer_id          INT NOT NULL REFERENCES trainers(id),
+    scheduled_at        TIMESTAMP NOT NULL,
+    status              VARCHAR(20) NOT NULL,
+    created_at          TIMESTAMP NOT NULL,
+    notified_at         TIMESTAMP,
+    offer_expires_at    TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_waitlist_slot ON waitlist (trainer_id, scheduled_at);
+CREATE INDEX IF NOT EXISTS idx_waitlist_member ON waitlist (member_id);
