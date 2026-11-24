@@ -205,7 +205,7 @@ export function AppShell({ nav, active, onNavigate, children }: AppShellProps) {
           </button>
           <h1 className="font-display text-4xl sm:text-5xl md:text-6xl font-extrabold uppercase leading-none">{current}</h1>
         </header>
-        <div className="px-6 md:px-10 py-8 space-y-6 max-w-6xl">{children}</div>
+        <div className="px-6 md:px-10 py-8 space-y-6 w-full min-w-0">{children}</div>
       </main>
     </div>
   );
