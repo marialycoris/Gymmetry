@@ -55,8 +55,10 @@ public class ReportController {
 
         Map<String, Integer> sessionsByStatus = new LinkedHashMap<>();
         sessionsByStatus.put("PENDING", 0);
+        sessionsByStatus.put("REASSIGN_PENDING", 0);
         sessionsByStatus.put("ACCEPTED", 0);
         sessionsByStatus.put("DECLINED", 0);
+        sessionsByStatus.put("CANCELLED", 0);
         sessionsByStatus.put("COMPLETED", 0);
         sessionsByStatus.put("NOT_HELD", 0);
         for (Session s : sessions) {
@@ -100,7 +102,7 @@ public class ReportController {
         return switch (status) {
             case REQUESTED -> "PENDING";
             case SCHEDULED -> "ACCEPTED";
-            case CANCELLED -> "DECLINED";
+            case CANCELLED -> "CANCELLED";
             default -> status.name();
         };
     }

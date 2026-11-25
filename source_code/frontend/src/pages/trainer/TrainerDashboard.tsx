@@ -286,7 +286,7 @@ export function TrainerDashboard() {
       >
         {declining && (
           <>
-            <p className="text-sm text-gray-600 mb-4">{declining.memberName}, {fmtDate(declining.date)} at {fmtTime(declining.time)}. An admin will offer them another trainer.</p>
+            <p className="text-sm text-gray-600 mb-4">{declining.memberName}, {fmtDate(declining.date)} at {fmtTime(declining.time)}. An admin will propose another trainer, who will only see the request after the member accepts.</p>
             {reasonErr && <Notice tone="error">{reasonErr}</Notice>}
             <Input label="Reason for declining" value={reason} onChange={(e) => setReason(e.target.value)} required />
             <div className="flex justify-end gap-2">

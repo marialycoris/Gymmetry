@@ -34,6 +34,7 @@ public class SessionController {
         return gym.getAllSessions().stream()
                 .map(this::toDto)
                 .filter(dto -> memberId == null || dto.memberId() == memberId)
+                .filter(dto -> trainerId == null || !dto.status().equals("REASSIGN_PENDING"))
                 .filter(dto -> trainerId == null || dto.trainerId() == trainerId)
                 .filter(dto -> status == null || status.isBlank() || dto.status().equals(status))
                 .toList();
@@ -73,6 +74,20 @@ public class SessionController {
         try {
             if (req.accept() == null) throw new IllegalArgumentException("accept is required");
             gym.respondToSession(id, req.accept(), req.reason());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    public record ReassignmentResponseRequest(Boolean accept) {}
+
+    @PutMapping("/{id}/reassignment-response")
+    public ResponseEntity<?> respondToReassignment(@PathVariable int id,
+                                                   @RequestBody ReassignmentResponseRequest req) {
+        try {
+            if (req.accept() == null) throw new IllegalArgumentException("accept is required");
+            gym.respondToReassignment(id, req.accept());
             return ResponseEntity.noContent().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -173,6 +188,7 @@ public class SessionController {
     private static String statusCode(SessionStatus status) {
         return switch (status) {
             case REQUESTED -> "PENDING";
+            case REASSIGN_PENDING -> "REASSIGN_PENDING";
             case SCHEDULED -> "ACCEPTED";
             default -> status.name();
         };

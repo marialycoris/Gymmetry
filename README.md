@@ -16,7 +16,7 @@ By combining centralized record management with engagement insights and more fle
 |---|---|
 | **Gym Admin / Owner** | Manages members, trainers, payments, and reports; reviews member engagement insights and scheduling trends |
 | **Trainer** | Handles session requests, manages assigned schedules, and records member attendance |
-| **Member** | Manages their membership, books sessions, monitors attendance, and receives relevant booking notifications |
+| **Member** | Manages their membership, books sessions, approves or rejects proposed trainer changes, monitors attendance, and receives relevant booking notifications |
 
 ## Objectives
 
@@ -25,7 +25,7 @@ By combining centralized record management with engagement insights and more fle
 3. **Provide structured session booking** — allow members to choose trainers and time slots while enforcing trainer responses, rescheduling, cancellation, and booking-conflict rules.
 4. **Improve session availability and booking flexibility** — implement waitlists, available-slot notifications, and alternative session suggestions through Gymmetry FairSlot.
 5. **Ensure accurate attendance tracking** — record member attendance based on completed sessions rather than self-reported attendance.
-6. **Empower administrators with oversight** — allow attendance overrides, review of declined sessions, reassignment of bookings, and report generation.
+6. **Empower administrators with oversight** — allow attendance overrides, review of declined sessions, reassignment of bookings subject to member approval, and report generation.
 7. **Provide member engagement insights** — use Gymmetry Pulse to analyze attendance patterns and membership activity, identify potential changes in participation, and support timely member follow-ups.
 8. **Enforce business rules consistently** — prevent expired members from booking sessions and automatically disable accounts after six months of inactivity, according to the system's defined rules.
 9. **Provide a foundation for future expansion** — support a REST API and web frontend for broader accessibility and future enhancements.
@@ -62,7 +62,7 @@ Trainers review session requests and accept or decline them, with a reason requi
 ### 6. Decline Review & Reassignment
 **Status:** Implemented
 
-Administrators review declined sessions and may reassign them to another trainer to help members secure an alternative schedule.
+Administrators review declined sessions and propose another trainer. The member must accept that trainer before the request is shown to them for a response; rejecting the proposal cancels the session.
 
 ### 7. Attendance Tracking
 **Status:** Implemented

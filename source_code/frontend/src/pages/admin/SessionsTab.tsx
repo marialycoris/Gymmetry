@@ -28,6 +28,7 @@ export function SessionsTab() {
   if (sessions.loading || trainers.loading) return <Loading />;
   const all = [...(sessions.data ?? [])].sort(byDate).reverse();
   const declined = all.filter((s) => s.status === 'DECLINED');
+  const awaitingMember = all.filter((s) => s.status === 'REASSIGN_PENDING');
   const shown = all.filter((s) => !status || s.status === status);
   const others = (trainers.data ?? []).filter((t) => t.id !== target?.trainerId);
 
@@ -51,12 +52,25 @@ export function SessionsTab() {
       confirmLabel: 'Reassign',
     });
     if (!confirmed) return;
-    await run(() => api.reassignSession(target.id, Number(trainerId)), 'Session reassigned.');
+    await run(() => api.reassignSession(target.id, Number(trainerId)), 'Trainer proposed. Waiting for the member to accept or reject.');
   };
 
   return (
     <>
       {sessions.error && <Notice tone="error">{sessions.error}</Notice>}
+
+      <Card title={`Awaiting member approval (${awaitingMember.length})`} headerTone="maroon">
+        <Table headers={['When', 'Member', 'Proposed trainer', 'Status']} isEmpty={awaitingMember.length === 0} emptyText="No trainer changes awaiting member approval." pageSize={5} itemLabel="sessions">
+          {awaitingMember.map((s) => (
+            <tr key={s.id}>
+              <td className={td}>{fmtDate(s.date)}<span className="block text-xs text-gray-500">{fmtTime(s.time)}</span></td>
+              <td className={`${td} font-semibold`}>{s.memberName}</td>
+              <td className={td}>{s.trainerName}</td>
+              <td className={td}><Badge value={s.status} /></td>
+            </tr>
+          ))}
+        </Table>
+      </Card>
 
       <Card title={`Declined sessions (${declined.length})`} headerTone="maroon">
         <Table headers={['When', 'Member', 'Declined by', 'Reason', '']} isEmpty={declined.length === 0} emptyText="No declined sessions to review." pageSize={5} itemLabel="declined sessions">
@@ -104,6 +118,7 @@ export function SessionsTab() {
           <>
             <p className="text-sm text-gray-600 mb-4">
               {target.memberName}, {fmtDate(target.date)} at {fmtTime(target.time)}. {target.trainerName} declined: “{target.declineReason}”
+              The member must accept the proposed trainer before the request is sent to them; rejecting cancels the session.
             </p>
             <Select label="New trainer" value={trainerId} onChange={(e) => setTrainerId(e.target.value)}
               options={others.map((t) => ({ value: t.id, label: `${t.name} (${t.specialty})` }))} />

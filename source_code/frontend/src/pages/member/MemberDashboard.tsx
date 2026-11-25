@@ -7,6 +7,7 @@ import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { usePersistentTab } from '../../hooks/usePersistentTab';
 import { byDate, daysUntil, fmtDate, fmtTime, money, today } from '../../lib/format';
+import type { Session } from '../../lib/types';
 import { SPECIALIZATIONS } from '../../lib/specializations';
 import { AppShell, type NavItem } from '../../components/AppShell';
 import { Button } from '../../components/Button';
@@ -38,6 +39,7 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
   const left = daysUntil(m.expiresAt);
   const all = [...(sessions.data ?? [])].sort(byDate);
   const pending = all.filter((s) => s.status === 'PENDING');
+  const reassignments = all.filter((s) => s.status === 'REASSIGN_PENDING');
   const upcoming = all.filter((s) => s.status === 'ACCEPTED');
   const record = all.filter((s) => ['COMPLETED', 'NOT_HELD', 'DECLINED'].includes(s.status));
   const held = record.filter((s) => s.status === 'COMPLETED').length;
@@ -118,6 +120,10 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
                 : m.status === 'EXPIRED' ? `Your membership expired on ${fmtDate(m.expiresAt)}. Renew at the front desk to book sessions again.`
                 : `Your membership ends in ${left} day${left === 1 ? '' : 's'}. Renew at the front desk to keep training.`}
             </span>
+          </li>
+          <li className="flex items-center justify-between gap-4">
+            <span>{reassignments.length === 0 ? 'No trainer changes waiting for your approval.' : `${reassignments.length} trainer change${reassignments.length > 1 ? 's' : ''} waiting for your approval.`}</span>
+            {reassignments.length > 0 && <Button size="sm" variant="secondary" onClick={() => go('sessions')}>Review</Button>}
           </li>
           <li className="flex items-center justify-between gap-4">
             <span>{pending.length === 0 ? 'No requests waiting for a trainer’s answer.' : `${pending.length} request${pending.length > 1 ? 's' : ''} waiting for a trainer’s answer.`}</span>
@@ -242,10 +248,32 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
 }
 
 function MySessions({ memberId }: { memberId: number }) {
+  const toast = useToast();
+  const confirm = useConfirm();
   const { data, loading, error, reload } = useAsync(() => api.getSessions({ memberId }), [memberId]);
   const [booking, setBooking] = useState(false);
+  const [busyId, setBusyId] = useState<number | null>(null);
   if (loading) return <Loading />;
   const list = [...(data ?? [])].sort(byDate).reverse();
+
+  const respond = async (s: Session, accept: boolean) => {
+    const confirmed = await confirm({
+      title: accept ? 'Accept this trainer?' : 'Reject this trainer?',
+      message: accept
+        ? `Accept ${s.trainerName} for ${fmtDate(s.date)} at ${fmtTime(s.time)}? Your request will then be sent to them for acceptance.`
+        : `Reject ${s.trainerName} for ${fmtDate(s.date)} at ${fmtTime(s.time)}? This will cancel the session.`,
+      confirmLabel: accept ? 'Accept trainer' : 'Reject and cancel',
+      variant: accept ? 'primary' : 'danger',
+    });
+    if (!confirmed) return;
+    setBusyId(s.id);
+    try {
+      await api.respondToReassignment(s.id, accept);
+      toast.success(accept ? 'Trainer accepted. Your request was sent to them.' : 'Trainer rejected. The session was cancelled.');
+      reload();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusyId(null); }
+  };
+
   return (
     <>
       {error && <Notice tone="error">{error}</Notice>}
@@ -254,13 +282,24 @@ function MySessions({ memberId }: { memberId: number }) {
         headerTone="maroon"
         action={<Button size="sm" onClick={() => setBooking(true)}>Book a session</Button>}
       >
-        <Table headers={['When', 'Trainer', 'Status', 'Note']} isEmpty={list.length === 0} emptyText="You have not booked a session yet." pageSize={5} itemLabel="sessions">
+        <Table headers={['When', 'Trainer', 'Status', 'Note', 'Action']} isEmpty={list.length === 0} emptyText="You have not booked a session yet." pageSize={5} itemLabel="sessions">
           {list.map((s) => (
             <tr key={s.id}>
               <td className={td}>{fmtDate(s.date)}<span className="block text-xs text-gray-500">{fmtTime(s.time)}</span></td>
               <td className={`${td} font-semibold`}>{s.trainerName}</td>
               <td className={td}><Badge value={s.status} /></td>
-              <td className={td}>{s.status === 'DECLINED' ? `Declined: ${s.declineReason}. The gym will find you another trainer.` : ''}</td>
+              <td className={`${td} max-w-sm`}>
+                {s.status === 'DECLINED' && `Declined: ${s.declineReason}. The gym will find you another trainer.`}
+                {s.status === 'REASSIGN_PENDING' && 'The gym assigned you a new trainer. Accept to send the request to them, or reject to cancel.'}
+              </td>
+              <td className={`${td} whitespace-nowrap`}>
+                {s.status === 'REASSIGN_PENDING' ? (
+                  <>
+                    <Button size="sm" isLoading={busyId === s.id} disabled={busyId !== null} onClick={() => respond(s, true)}>Accept</Button>{' '}
+                    <Button size="sm" variant="secondary" disabled={busyId !== null} onClick={() => respond(s, false)}>Reject</Button>
+                  </>
+                ) : <span className="text-gray-400">—</span>}
+              </td>
             </tr>
           ))}
         </Table>

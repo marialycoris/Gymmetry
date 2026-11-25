@@ -1,7 +1,7 @@
 export type Plan = 'BASIC' | 'PREMIUM' | 'VIP';
 export type Gender = 'MALE' | 'FEMALE';
 export type MemberStatus = 'ACTIVE' | 'EXPIRED' | 'DISABLED';
-export type SessionStatus = 'PENDING' | 'ACCEPTED' | 'DECLINED' | 'COMPLETED' | 'NOT_HELD';
+export type SessionStatus = 'PENDING' | 'REASSIGN_PENDING' | 'ACCEPTED' | 'DECLINED' | 'CANCELLED' | 'COMPLETED' | 'NOT_HELD';
 export type PayMethod = 'CASH' | 'CARD' | 'E_WALLET';
 export type PulseLevel = 'FOLLOW_UP' | 'WATCH' | 'POSITIVE';
 export type TrainerStatus = 'ACTIVE' | 'DISABLED';
@@ -10,7 +10,7 @@ export type WaitlistStatus = 'WAITING' | 'OFFERED' | 'BOOKED' | 'CANCELLED' | 'E
 export const PLANS: Plan[] = ['BASIC', 'PREMIUM', 'VIP'];
 export const GENDERS: Gender[] = ['MALE', 'FEMALE'];
 export const METHODS: PayMethod[] = ['CASH', 'CARD', 'E_WALLET'];
-export const STATUSES: SessionStatus[] = ['PENDING', 'ACCEPTED', 'DECLINED', 'COMPLETED', 'NOT_HELD'];
+export const STATUSES: SessionStatus[] = ['PENDING', 'REASSIGN_PENDING', 'ACCEPTED', 'DECLINED', 'CANCELLED', 'COMPLETED', 'NOT_HELD'];
 
 // TODO: replace with your real plan prices (or load them from the API)
 export const PLAN_PRICE: Record<Plan, number> = { BASIC: 800, PREMIUM: 1500, VIP: 2500 };

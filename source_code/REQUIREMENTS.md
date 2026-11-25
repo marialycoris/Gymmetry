@@ -90,12 +90,13 @@ enum AccountStatus {
 }
 
 enum SessionStatus {
-    REQUESTED,   // awaiting trainer response
-    SCHEDULED,   // trainer accepted
-    DECLINED,    // trainer declined — member must decide
-    CANCELLED,   // cancelled (member, admin, or trainer-absent)
-    COMPLETED,   // member attended
-    NOT_HELD     // session didn't happen
+    REQUESTED,        // awaiting trainer response
+    REASSIGN_PENDING, // admin proposed a new trainer — member must respond
+    SCHEDULED,        // trainer accepted
+    DECLINED,         // trainer declined — awaiting admin review
+    CANCELLED,        // cancelled (member, admin, or trainer-absent)
+    COMPLETED,        // member attended
+    NOT_HELD          // session didn't happen
 }
 
 enum TrainerSessionStatus {
@@ -109,6 +110,7 @@ enum NotHeldReason {
 
 enum CancellationReason {
     MEMBER_CANCELLED_IN_TIME,
+    MEMBER_REJECTED_REASSIGNMENT,
     ADMIN_CANCELLED,
     TRAINER_ABSENT
 }
@@ -158,20 +160,21 @@ enum PaymentStatus {
 
 ### 7.1 State Transitions
 
-| From       | Event                                        | To          |
-|------------|----------------------------------------------|-------------|
-| —          | Member books (or Admin books)                | REQUESTED   |
-| REQUESTED  | Trainer accepts                              | SCHEDULED   |
-| REQUESTED  | Trainer declines (with reason)               | DECLINED    |
-| DECLINED   | Member chooses to change trainer             | REQUESTED   |
-| DECLINED   | Member chooses to reschedule same trainer    | REQUESTED   |
-| DECLINED   | Member cancels                               | CANCELLED   |
-| SCHEDULED  | Member reschedules (≥48h before)             | REQUESTED   |
-| SCHEDULED  | Member cancels (≥48h before)                 | CANCELLED   |
-| SCHEDULED  | Trainer marks member PRESENT                 | COMPLETED   |
-| SCHEDULED  | Trainer marks member NO-SHOW                 | NOT_HELD    |
-| SCHEDULED  | Deadline passes, Trainer never marked        | NOT_HELD    |
-| SCHEDULED  | Admin marks Trainer absent                   | CANCELLED   |
+| From              | Event                                         | To                |
+|-------------------|-----------------------------------------------|-------------------|
+| —                 | Member books (or Admin books)                 | REQUESTED         |
+| REQUESTED         | Trainer accepts                               | SCHEDULED         |
+| REQUESTED         | Trainer declines (with reason)                | DECLINED          |
+| DECLINED          | Admin proposes another trainer                | REASSIGN_PENDING  |
+| REASSIGN_PENDING  | Member accepts the proposed trainer           | REQUESTED         |
+| REASSIGN_PENDING  | Member rejects the proposed trainer           | CANCELLED         |
+| DECLINED          | Member cancels                                | CANCELLED         |
+| SCHEDULED         | Member reschedules (≥48h before)              | REQUESTED         |
+| SCHEDULED         | Member cancels (≥48h before)                  | CANCELLED         |
+| SCHEDULED         | Trainer marks member PRESENT                  | COMPLETED         |
+| SCHEDULED         | Trainer marks member NO-SHOW                  | NOT_HELD          |
+| SCHEDULED         | Deadline passes, Trainer never marked         | NOT_HELD          |
+| SCHEDULED         | Admin marks Trainer absent                    | CANCELLED         |
 
 **Deadline**: 23:59 of the session's date.
 
@@ -184,12 +187,14 @@ enum PaymentStatus {
 | Deadline passes, Trainer never marked         | ABSENT         | NOT_HELD       | NOT_MARKED |
 | Admin marks Trainer absent                    | ABSENT         | CANCELLED      | TRAINER_ABSENT |
 | Trainer DECLINES a REQUESTED session          | not affected   | DECLINED       | — |
+| Member rejects admin-proposed trainer          | not affected   | CANCELLED      | MEMBER_REJECTED_REASSIGNMENT |
 | Member cancels (≥48h before)                  | not tracked    | CANCELLED      | MEMBER_CANCELLED_IN_TIME |
 | Admin cancels directly                        | not tracked    | CANCELLED      | ADMIN_CANCELLED |
 
 ### 7.3 Rules
 - Trainer attendance applies **only to SCHEDULED sessions**.
 - Declining a REQUESTED session does **NOT** mark the Trainer absent.
+- A `REASSIGN_PENDING` session is **not visible to the proposed Trainer** until the Member accepts it.
 - Trainer attendance is **visible to Admin only**.
 - Admin override of Trainer attendance is **always allowed**.
 - Cancelled/declined sessions do **not** track attendance.
@@ -205,10 +210,13 @@ enum PaymentStatus {
 - **Cancel** → session becomes `CANCELLED` (reason: `MEMBER_CANCELLED_IN_TIME`)
 
 ### After a Decline
-When a Trainer declines, the Member is prompted to:
-1. **Change trainer** → session returns to `REQUESTED` with new trainer
-2. **Reschedule with the same trainer** → session returns to `REQUESTED` with new time
-3. **Cancel the session** → `CANCELLED`
+When a Trainer declines, the session enters `DECLINED` for Admin review. Admin proposes
+another trainer, moving the session to `REASSIGN_PENDING`. The Member then chooses:
+
+1. **Accept the proposed trainer** → session returns to `REQUESTED` with the new trainer,
+   and only then is it shown to that Trainer for acceptance
+2. **Reject the proposed trainer** → session becomes `CANCELLED`
+   (reason: `MEMBER_REJECTED_REASSIGNMENT`)
 
 ---
 
@@ -261,7 +269,7 @@ Two distinct concepts:
 - Record payment
 - Renew / change plan
 - Book session on behalf of member
-- Approve declines or reassign declined sessions
+- Review declines and propose replacement trainers for member approval
 - Override Trainer session attendance
 - Log Trainer attendance / view trainer presence
 - View reports (revenue, attendance, session outcomes, trainer
@@ -282,7 +290,7 @@ Two distinct concepts:
 - Log in (first login requires password change)
 - Book session (pick trainer + time)
 - Reschedule or cancel session (≥48h notice)
-- Respond to declined session (change trainer / reschedule / cancel)
+- Accept or reject an admin-proposed replacement trainer (reject cancels the session)
 - View own plan, upcoming sessions, attendance history
 - Update own profile
 
@@ -355,10 +363,11 @@ flowchart TB
     TrainerDecide -- Accept --> Scheduled[Session = SCHEDULED]
     TrainerDecide -- Decline with reason --> Declined[Session = DECLINED]
 
-    Declined --> MemberChoice{Member choice}
-    MemberChoice -- Change trainer --> Requested
-    MemberChoice -- Reschedule same trainer --> Requested
-    MemberChoice -- Cancel --> Cancelled[Session = CANCELLED]
+    Declined --> AdminReview[Admin proposes another trainer]
+    AdminReview --> ReassignPending[Session = REASSIGN_PENDING<br/>Hidden from proposed trainer]
+    ReassignPending --> MemberChoice{Member response?}
+    MemberChoice -- Accept --> Requested
+    MemberChoice -- Reject --> Cancelled[Session = CANCELLED<br/>reason = MEMBER_REJECTED_REASSIGNMENT]
 
     Scheduled --> MemberEdit{Member reschedule/cancel?<br/>≥48h before?}
     MemberEdit -- Yes, reschedule --> Requested

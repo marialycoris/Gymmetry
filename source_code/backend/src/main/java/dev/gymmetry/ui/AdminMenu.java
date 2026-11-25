@@ -145,7 +145,7 @@ public class AdminMenu {
         if (newTrainerId != 0) {
             Trainer newTrainer = gym.findTrainer(newTrainerId);
             gym.reassignSession(id, newTrainer);
-            System.out.println("  ✓ Reassigned to " + newTrainer.getName());
+            System.out.println("  ✓ Proposed " + newTrainer.getName() + " — awaiting the member's response.");
         } else {
             gym.adminMarkTrainerAbsent(id, admin, "Admin approved decline");
             System.out.println("  ✓ Session cancelled.");

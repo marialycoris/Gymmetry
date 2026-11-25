@@ -84,6 +84,14 @@ public class MemberMenu {
         if (id == 0) return;
         
         Session s = gym.findSession(id);
+        if (s.getStatus() == SessionStatus.REASSIGN_PENDING) {
+            System.out.println("  Proposed trainer: " + s.getTrainer().getName());
+            System.out.println("  1. Accept proposed trainer\n  2. Reject (cancel session)");
+            int response = in.readInt("Choose: ");
+            gym.respondToReassignment(id, response == 1);
+            System.out.println(response == 1 ? "  ✓ Trainer accepted — request sent." : "  ✓ Proposed trainer rejected — session cancelled.");
+            return;
+        }
         if (s.getStatus() != SessionStatus.REQUESTED && s.getStatus() != SessionStatus.SCHEDULED && s.getStatus() != SessionStatus.DECLINED) {
             System.out.println("  Session is " + s.getStatus() + " — cannot edit."); return;
         }

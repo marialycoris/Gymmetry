@@ -37,7 +37,7 @@ const PULSE_GROUPS: { level: PulseLevel; label: string }[] = [
 const METHOD_COLORS: Record<PayMethod, string> = { CASH: '#68020F', CARD: '#F21137', E_WALLET: '#FB7185' };
 const PLAN_COLORS: Record<Plan, string> = { BASIC: '#FCA5A5', PREMIUM: '#F21137', VIP: '#68020F' };
 const STATUS_COLORS: Record<SessionStatus, string> = {
-  PENDING: '#FCA5A5', ACCEPTED: '#FB7185', DECLINED: '#F21137', COMPLETED: '#9F1239', NOT_HELD: '#68020F',
+  PENDING: '#FCA5A5', REASSIGN_PENDING: '#FDBA74', ACCEPTED: '#FB7185', DECLINED: '#F21137', CANCELLED: '#9CA3AF', COMPLETED: '#9F1239', NOT_HELD: '#68020F',
 };
 const PULSE_COLORS: Record<PulseLevel, string> = { FOLLOW_UP: '#68020F', WATCH: '#F21137', POSITIVE: '#FB7185' };
 
@@ -50,6 +50,7 @@ function Overview({ go }: { go: (id: string) => void }) {
 
   const insights = pulse.data ?? [];
   const declined = r.sessionsByStatus.DECLINED;
+  const awaitingMember = r.sessionsByStatus.REASSIGN_PENDING;
   const followUps = insights.filter((p) => p.level === 'FOLLOW_UP');
   const pulseRecent = insights.reduce((s, i) => s + i.recentVisits, 0);
   const pulsePrevious = insights.reduce((s, i) => s + i.previousVisits, 0);
@@ -121,6 +122,10 @@ function Overview({ go }: { go: (id: string) => void }) {
 
       <Card title="Needs your attention" icon={<TriangleAlert className="h-5 w-5" />} headerTone="maroon">
         <ul className="space-y-4">
+          <li className="flex items-center justify-between gap-4">
+            <span>{awaitingMember === 0 ? 'No reassigned sessions awaiting member approval.' : `${awaitingMember} reassigned session${awaitingMember > 1 ? 's' : ''} awaiting member approval.`}</span>
+            {awaitingMember > 0 && <Button size="sm" variant="secondary" onClick={() => go('sessions')}>View</Button>}
+          </li>
           <li className="flex items-center justify-between gap-4">
             <span>{declined === 0 ? 'No declined sessions to review.' : `${declined} declined session${declined > 1 ? 's' : ''} need a new trainer.`}</span>
             {declined > 0 && <Button size="sm" onClick={() => go('sessions')}>Review</Button>}

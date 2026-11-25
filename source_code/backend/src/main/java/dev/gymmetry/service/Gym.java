@@ -275,6 +275,7 @@ public class Gym {
     public List<Session> getSessionsForTrainer(int trainerId) {
         return sessionRepo.findAll().stream()
                 .filter(s -> s.getTrainer().getId() == trainerId)
+                .filter(s -> s.getStatus() != SessionStatus.REASSIGN_PENDING)
                 .collect(Collectors.toList());
     }
 
@@ -414,9 +415,17 @@ public class Gym {
         requireSlotCapacity(newTrainer, s.getScheduledAt(), s.getId());
         Trainer oldTrainer = s.getTrainer();
         LocalDateTime slotTime = s.getScheduledAt();
-        s.reassign(newTrainer);
+        s.proposeReassignment(newTrainer);
         sessionRepo.update(s);
         offerNextForSlot(oldTrainer.getId(), slotTime);
+    }
+
+    public void respondToReassignment(int sessionId, boolean accept) {
+        Session s = findSession(sessionId);
+        if (accept) s.confirmReassignment();
+        else s.rejectReassignment();
+        sessionRepo.update(s);
+        if (!accept) offerNextForSlot(s.getTrainer().getId(), s.getScheduledAt());
     }
 
     public void adminMarkTrainerAbsent(int sessionId, Admin admin, String reason) {
@@ -686,6 +695,7 @@ public class Gym {
                         && s.getId() != excludeSessionId
                         && s.getScheduledAt().equals(when)
                         && (s.getStatus() == SessionStatus.REQUESTED
+                            || s.getStatus() == SessionStatus.REASSIGN_PENDING
                             || s.getStatus() == SessionStatus.SCHEDULED));
     }
 
@@ -719,6 +729,7 @@ public class Gym {
                 .filter(s -> s.getTrainer().getId() == trainerId)
                 .filter(s -> s.getScheduledAt().equals(when))
                 .filter(s -> s.getStatus() == SessionStatus.REQUESTED
+                        || s.getStatus() == SessionStatus.REASSIGN_PENDING
                         || s.getStatus() == SessionStatus.SCHEDULED)
                 .count();
     }

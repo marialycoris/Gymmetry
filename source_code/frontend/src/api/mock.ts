@@ -49,6 +49,7 @@ const sessions: Session[] = [
   mk(17, 5, 1, -16, '06:00', 'COMPLETED'),
   mk(18, 5, 2, -28, '18:00', 'COMPLETED'),
   mk(19, 5, 1, -38, '08:00', 'COMPLETED'),
+  mk(20, 1, 3, 2, '08:00', 'REASSIGN_PENDING'),
 ];
 const payments: Payment[] = [
   { id: 1, memberId: 1, memberName: 'Maria Santos', amount: 1500, method: 'E_WALLET', paidAt: iso(-6) },
@@ -70,7 +71,7 @@ const USERS: Record<string, User> = {
   member: { username: 'member', role: 'MEMBER', personId: 1, name: 'Maria Santos' },
   newbie: { username: 'newbie', role: 'MEMBER', personId: 5, name: 'Liza Tan', mustChangePassword: true },
 };
-const isOpen = (s: Session) => s.status !== 'DECLINED';
+const isOpen = (s: Session) => s.status === 'PENDING' || s.status === 'ACCEPTED' || s.status === 'REASSIGN_PENDING';
 const member = (id: number) => { const m = members.find((x) => x.id === id); if (!m) throw new Error('Member not found.'); return m; };
 const trainer = (id: number) => { const t = trainers.find((x) => x.id === id); if (!t) throw new Error('Trainer not found.'); return t; };
 const session = (id: number) => { const s = sessions.find((x) => x.id === id); if (!s) throw new Error('Session not found.'); return s; };
@@ -293,10 +294,22 @@ export const mock = {
   },
   reassignSession(id: number, trainerId: number): void {
     const s = session(id);
+    if (s.status !== 'DECLINED') throw new Error('Only declined sessions can be reassigned.');
+    if (s.trainerId === trainerId) throw new Error('Session is already assigned to this trainer.');
     if (slotTaken(trainerId, s.date, s.time)) throw new Error(`That time is already full for ${trainer(trainerId).specialty}.`);
     const oldTrainerId = s.trainerId;
-    Object.assign(s, { trainerId, trainerName: trainerName(trainerId), status: 'PENDING', declineReason: undefined });
+    Object.assign(s, { trainerId, trainerName: trainerName(trainerId), status: 'REASSIGN_PENDING', declineReason: undefined });
     offerNext(oldTrainerId, s.date, s.time);
+  },
+  respondToReassignment(id: number, accept: boolean): void {
+    const s = session(id);
+    if (s.status !== 'REASSIGN_PENDING') throw new Error('This session has no trainer change to respond to.');
+    if (accept) {
+      s.status = 'PENDING';
+    } else {
+      s.status = 'CANCELLED';
+      offerNext(s.trainerId, s.date, s.time);
+    }
   },
   completeSession(id: number, note?: string): void {
     const s = session(id); s.status = 'COMPLETED'; s.completionNote = note?.trim() || undefined;

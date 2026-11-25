@@ -102,13 +102,26 @@ public class Session {
         touch();
     }
 
-    public void reassign(Trainer newTrainer) {
-        requireStatus(SessionStatus.DECLINED, "reassign");
+    public void proposeReassignment(Trainer newTrainer) {
+        requireStatus(SessionStatus.DECLINED, "propose reassignment");
         if (newTrainer == null)
             throw new IllegalArgumentException("New trainer required");
         this.trainer = newTrainer;
-        this.status = SessionStatus.REQUESTED;
+        this.status = SessionStatus.REASSIGN_PENDING;
         this.declineReason = null;
+        touch();
+    }
+
+    public void confirmReassignment() {
+        requireStatus(SessionStatus.REASSIGN_PENDING, "confirm reassignment");
+        this.status = SessionStatus.REQUESTED;
+        touch();
+    }
+
+    public void rejectReassignment() {
+        requireStatus(SessionStatus.REASSIGN_PENDING, "reject reassignment");
+        this.status = SessionStatus.CANCELLED;
+        this.cancellationReason = CancellationReason.MEMBER_REJECTED_REASSIGNMENT;
         touch();
     }
 
