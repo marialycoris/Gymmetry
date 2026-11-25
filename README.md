@@ -168,8 +168,8 @@ gymmetry/
 
 ### Database Setup
 1. Start PostgreSQL.
-2. Create a database named `gymmetry`.
-3. The backend connects to `jdbc:postgresql://127.0.0.1:5433/gymmetry`. If your setup differs, update the URL, user, and password in `source_code/backend/src/main/java/dev/gymmetry/db/Database.java`.
+2. Create a database named `gymmetry`, or set `DB_NAME` to an existing database.
+3. The backend tries `127.0.0.1:5433` first, then `127.0.0.1:5432`. Override it with `DB_URL`, `DB_HOST`, `DB_PORTS`/`DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, and `DB_CONNECT_TIMEOUT` environment variables, or the matching `-D` system properties.
 
 ### Backend
 ```bash
