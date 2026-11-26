@@ -6,7 +6,7 @@ import { useToast } from '../../hooks/useToast';
 import { useConfirm } from '../../hooks/useConfirm';
 import { useAsync } from '../../hooks/useAsync';
 import { usePersistentTab } from '../../hooks/usePersistentTab';
-import { byDate, daysUntil, fmtDate, fmtTime, money, today } from '../../lib/format';
+import { byDate, daysUntil, fmtDate, fmtTime, money, msUntil, today } from '../../lib/format';
 import type { Session } from '../../lib/types';
 import { SPECIALIZATIONS } from '../../lib/specializations';
 import { AppShell, type NavItem } from '../../components/AppShell';
@@ -27,6 +27,10 @@ const NAV: NavItem[] = [
   { id: 'waitlist', label: 'Waitlist' },
   { id: 'payments', label: 'Payments' },
 ];
+
+const EDIT_WINDOW_MS = 48 * 60 * 60 * 1000;
+const canMemberEdit = (s: Session) =>
+  ['PENDING', 'ACCEPTED', 'DECLINED'].includes(s.status) && msUntil(s.date, s.time) > EDIT_WINDOW_MS;
 
 function Overview({ go, memberId }: { go: (id: string) => void; memberId: number }) {
   const member = useAsync(() => api.getMember(memberId), [memberId]);
@@ -139,14 +143,14 @@ function Overview({ go, memberId }: { go: (id: string) => void; memberId: number
   );
 }
 
-function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: () => void; onDone: () => void }) {
+function SessionModal({ memberId, session, onClose, onDone }: { memberId: number; session?: Session; onClose: () => void; onDone: () => void }) {
   const toast = useToast();
   const confirm = useConfirm();
   const trainers = useAsync(() => api.getTrainers());
   const member = useAsync(() => api.getMember(memberId), [memberId]);
-  const [trainerId, setTrainerId] = useState('');
-  const [date, setDate] = useState(today());
-  const [time, setTime] = useState('');
+  const [trainerId, setTrainerId] = useState(session ? String(session.trainerId) : '');
+  const [date, setDate] = useState(session?.date ?? today());
+  const [time, setTime] = useState(session?.time ?? '');
   const [busy, setBusy] = useState(false);
   const slots = useAsync(() => (trainerId ? api.getSlots(Number(trainerId), date) : Promise.resolve([])), [trainerId, date]);
   const selectedSlot = (slots.data ?? []).find((s) => s.time === time);
@@ -156,6 +160,7 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
     [isFull, trainerId, date, time],
   );
   const canBook = member.data?.status === 'ACTIVE';
+  const canSubmit = !!trainerId && !!time && (session ? !isFull : canBook);
   const trainerOptions = (trainers.data ?? []).map((t) => ({
     value: t.id,
     label: `${t.name} - ${t.specialty}`,
@@ -169,7 +174,11 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
   };
 
   const submit = async () => {
-    const confirmed = await confirm(isFull ? {
+    const confirmed = await confirm(session ? {
+      title: 'Reschedule session?',
+      message: `Move your session with ${session.trainerName} to ${fmtDate(date)} at ${fmtTime(time)}? The trainer will be asked to confirm the new time.`,
+      confirmLabel: 'Reschedule',
+    } : isFull ? {
       title: 'Join waitlist?',
       message: `Join the waitlist for ${fmtDate(date)} at ${fmtTime(time)}?`,
       confirmLabel: 'Join waitlist',
@@ -181,7 +190,10 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
     if (!confirmed) return;
     setBusy(true);
     try {
-      if (isFull) {
+      if (session) {
+        await api.memberReschedule(session.id, { memberId, trainerId: Number(trainerId), date, time });
+        toast.success('Rescheduled. Your trainer has been asked to confirm the new time.');
+      } else if (isFull) {
         const entry = await api.joinWaitlist({ memberId, trainerId: Number(trainerId), date, time });
         toast.success(`You joined the waitlist for ${fmtDate(date)} at ${fmtTime(time)}. Position #${entry.position} — we will offer you the slot when it opens.`);
       } else {
@@ -193,19 +205,21 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
   };
 
   return (
-    <Modal isOpen onClose={onClose} title="Book a session" hideFooter isLoading={busy} loadingLabel={isFull ? 'Joining waitlist...' : 'Sending request...'}>
-      {trainers.loading || member.loading ? <Loading /> : (
+    <Modal isOpen onClose={onClose} title={session ? 'Reschedule session' : 'Book a session'} hideFooter isLoading={busy} loadingLabel={session ? 'Rescheduling…' : isFull ? 'Joining waitlist...' : 'Sending request...'}>
+      {trainers.loading || (!session && member.loading) ? <Loading /> : (
         <>
-          {!canBook && <Notice tone="warn">Only active memberships can book sessions. Renew at the front desk first.</Notice>}
+          {session ? (
+            <Notice tone="info">Current: {fmtDate(session.date)} at {fmtTime(session.time)} with {session.trainerName}. Pick a new time at least 48 hours away.</Notice>
+          ) : !canBook && <Notice tone="warn">Only active memberships can book sessions. Renew at the front desk first.</Notice>}
           <SearchableSelect label="Trainer" value={trainerId} onChange={pickTrainer} options={trainerOptions} placeholder="Search trainers..." />
           <Input label="Date" type="date" min={today()} value={date} onChange={(e) => { setDate(e.target.value); setTime(''); }} className="max-w-xs" />
           {!trainerId ? <p className="text-gray-500">Choose a trainer to see open times.</p> : slots.loading ? <Loading /> : (
             <>
-              <p className="mb-2 text-sm text-gray-500">Pick a time. Slots close when their specialization member limit is reached; full times can join the FairSlot waitlist.</p>
+              <p className="mb-2 text-sm text-gray-500">Pick a time. Slots close when their specialization member limit is reached{session ? ' — choose an open slot.' : '; full times can join the FairSlot waitlist.'}</p>
               <div className="flex flex-wrap gap-2">
                 {(slots.data ?? []).map((s) => (
                   <button key={s.time} aria-pressed={time === s.time} onClick={() => setTime(s.time)}
-                    title={s.available ? `${s.remaining} of ${s.capacity} spots open` : 'Fully booked — join the waitlist'}
+                    title={s.available ? `${s.remaining} of ${s.capacity} spots open` : session ? 'Fully booked — choose another time' : 'Fully booked — join the waitlist'}
                     className={`px-4 py-2 rounded-lg border-2 font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-gym-crimson ${!s.available ? 'border-dashed' : ''} ${time === s.time ? 'border-gym-crimson bg-gym-crimson text-white' : s.available ? 'border-gray-200 hover:border-gray-400' : 'border-gray-300 text-gray-500 hover:border-gym-crimson'}`}>
                     <span className="block">{fmtTime(s.time)}</span>
                     <span className="block text-[10px] font-bold uppercase tracking-wide">
@@ -218,11 +232,11 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
           )}
           {isFull && (
             <>
-              <Notice tone="warn">This time is fully booked. Join the waitlist to get the next offer, or choose a nearby option below.</Notice>
+              <Notice tone="warn">{session ? 'This time is fully booked. Choose another open slot or a nearby option below.' : 'This time is fully booked. Join the waitlist to get the next offer, or choose a nearby option below.'}</Notice>
               <div className="rounded-lg border border-gray-200 p-4">
                 <p className="font-semibold">Nearby options</p>
                 {alternatives.loading ? <Loading label="Finding alternatives..." /> : (alternatives.data ?? []).length === 0 ? (
-                  <p className="mt-2 text-sm text-gray-500">No nearby slots are open. Joining the waitlist is your best option.</p>
+                  <p className="mt-2 text-sm text-gray-500">{session ? 'No nearby slots are open.' : 'No nearby slots are open. Joining the waitlist is your best option.'}</p>
                 ) : (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(alternatives.data ?? []).map((a) => (
@@ -237,8 +251,8 @@ function BookModal({ memberId, onClose, onDone }: { memberId: number; onClose: (
           )}
           <div className="mt-6 flex justify-end gap-2">
             <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
-            <Button disabled={!canBook || !trainerId || !time} isLoading={busy} onClick={submit}>
-              {isFull ? 'Join waitlist' : 'Request session'}
+            <Button disabled={!canSubmit || busy} isLoading={busy} onClick={submit}>
+              {session ? 'Reschedule' : isFull ? 'Join waitlist' : 'Request session'}
             </Button>
           </div>
         </>
@@ -252,6 +266,7 @@ function MySessions({ memberId }: { memberId: number }) {
   const confirm = useConfirm();
   const { data, loading, error, reload } = useAsync(() => api.getSessions({ memberId }), [memberId]);
   const [booking, setBooking] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState<Session | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   if (loading) return <Loading />;
   const list = [...(data ?? [])].sort(byDate).reverse();
@@ -270,6 +285,22 @@ function MySessions({ memberId }: { memberId: number }) {
     try {
       await api.respondToReassignment(s.id, accept);
       toast.success(accept ? 'Trainer accepted. Your request was sent to them.' : 'Trainer rejected. The session was cancelled.');
+      reload();
+    } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusyId(null); }
+  };
+
+  const cancelSession = async (s: Session) => {
+    const confirmed = await confirm({
+      title: 'Cancel session?',
+      message: `Cancel your session with ${s.trainerName} on ${fmtDate(s.date)} at ${fmtTime(s.time)}? The slot will be offered to the waitlist.`,
+      confirmLabel: 'Cancel session',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    setBusyId(s.id);
+    try {
+      await api.memberCancel(s.id, memberId);
+      toast.success('Session cancelled. The slot was offered to the waitlist.');
       reload();
     } catch (x) { toast.error(x instanceof Error ? x.message : 'Something went wrong.'); } finally { setBusyId(null); }
   };
@@ -298,6 +329,11 @@ function MySessions({ memberId }: { memberId: number }) {
                     <Button size="sm" isLoading={busyId === s.id} disabled={busyId !== null} onClick={() => respond(s, true)}>Accept</Button>{' '}
                     <Button size="sm" variant="secondary" disabled={busyId !== null} onClick={() => respond(s, false)}>Reject</Button>
                   </>
+                ) : canMemberEdit(s) ? (
+                  <>
+                    <Button size="sm" variant="secondary" disabled={busyId !== null} onClick={() => setRescheduleTarget(s)}>Reschedule</Button>{' '}
+                    <Button size="sm" variant="danger" isLoading={busyId === s.id} disabled={busyId !== null} onClick={() => cancelSession(s)}>Cancel</Button>
+                  </>
                 ) : <span className="text-gray-400">—</span>}
               </td>
             </tr>
@@ -305,10 +341,18 @@ function MySessions({ memberId }: { memberId: number }) {
         </Table>
       </Card>
       {booking && (
-        <BookModal
+        <SessionModal
           memberId={memberId}
           onClose={() => setBooking(false)}
           onDone={() => { setBooking(false); reload(); }}
+        />
+      )}
+      {rescheduleTarget && (
+        <SessionModal
+          memberId={memberId}
+          session={rescheduleTarget}
+          onClose={() => setRescheduleTarget(null)}
+          onDone={() => { setRescheduleTarget(null); reload(); }}
         />
       )}
     </>

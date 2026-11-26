@@ -100,6 +100,10 @@ export const api = {
     call(() => mock.reassignSession(id, trainerId), () => http<void>(`/sessions/${id}/reassign`, send('PUT', { trainerId }))),
   respondToReassignment: (id: number, accept: boolean) =>
     call(() => mock.respondToReassignment(id, accept), () => http<void>(`/sessions/${id}/reassignment-response`, send('PUT', { accept }))),
+  memberReschedule: (id: number, input: { memberId: number; trainerId: number; date: string; time: string }) =>
+    call(() => mock.memberReschedule(id, input), () => http<void>(`/sessions/${id}/member-reschedule`, send('PUT', input))),
+  memberCancel: (id: number, memberId: number) =>
+    call(() => mock.memberCancel(id, memberId), () => http<void>(`/sessions/${id}/member-cancel`, send('PUT', { memberId }))),
   // PUT /sessions/:id/complete  (trainer; also records member attendance; optional note)
   completeSession: (id: number, note?: string) =>
     call(() => mock.completeSession(id, note), () => http<void>(`/sessions/${id}/complete`, send('PUT', { note }))),

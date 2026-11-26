@@ -14,5 +14,8 @@ export const fmtTime = (hhmm: string) => {
 export const daysUntil = (iso: string) =>
   Math.round((new Date(`${iso}T00:00`).getTime() - new Date(`${today()}T00:00`).getTime()) / 864e5);
 
+export const msUntil = (date: string, time: string) =>
+  new Date(`${date}T${time}:00`).getTime() - Date.now();
+
 export const byDate = (a: { date: string; time: string }, b: { date: string; time: string }) =>
   (a.date + a.time).localeCompare(b.date + b.time);

@@ -5,6 +5,7 @@ import { METHODS, PLANS, STATUSES } from '../lib/types';
 import type { User } from '../context/authState';
 import { passwordError } from '../lib/password';
 import { specializationCapacity } from '../lib/specializations';
+import { msUntil } from '../lib/format';
 
 const iso = (offset = 0) => { const d = new Date(); d.setDate(d.getDate() + offset); return d.toLocaleDateString('en-CA'); };
 const since = (date: string) => Math.round((new Date(iso()).getTime() - new Date(date).getTime()) / 864e5);
@@ -72,6 +73,9 @@ const USERS: Record<string, User> = {
   newbie: { username: 'newbie', role: 'MEMBER', personId: 5, name: 'Liza Tan', mustChangePassword: true },
 };
 const isOpen = (s: Session) => s.status === 'PENDING' || s.status === 'ACCEPTED' || s.status === 'REASSIGN_PENDING';
+const canMemberEdit = (s: Session) =>
+  (s.status === 'PENDING' || s.status === 'ACCEPTED' || s.status === 'DECLINED') &&
+  msUntil(s.date, s.time) > 48 * 60 * 60 * 1000;
 const member = (id: number) => { const m = members.find((x) => x.id === id); if (!m) throw new Error('Member not found.'); return m; };
 const trainer = (id: number) => { const t = trainers.find((x) => x.id === id); if (!t) throw new Error('Trainer not found.'); return t; };
 const session = (id: number) => { const s = sessions.find((x) => x.id === id); if (!s) throw new Error('Session not found.'); return s; };
@@ -311,6 +315,40 @@ export const mock = {
       s.cancellationReason = 'MEMBER_REJECTED_REASSIGNMENT';
       offerNext(s.trainerId, s.date, s.time);
     }
+  },
+  memberReschedule(id: number, i: { memberId: number; trainerId: number; date: string; time: string }): void {
+    const s = session(id);
+    if (s.memberId !== i.memberId) throw new Error('Not your session.');
+    if (!canMemberEdit(s)) throw new Error('Cannot reschedule — less than 48h remain or session not editable.');
+    if (msUntil(i.date, i.time) <= 48 * 60 * 60 * 1000) throw new Error('New time must be at least 48 hours away.');
+    if (trainer(i.trainerId).status !== 'ACTIVE') throw new Error('That trainer is not available for booking.');
+    if (slotTaken(i.trainerId, i.date, i.time) &&
+      !(i.trainerId === s.trainerId && i.date === s.date && i.time === s.time))
+      throw new Error(`That time is already full for ${trainer(i.trainerId).specialty}. Join the waitlist for the next opening.`);
+    if (sessions.some((o) => o.id !== s.id && o.memberId === i.memberId &&
+      o.date === i.date && o.time === i.time && isOpen(o)))
+      throw new Error('You already have a session at this time.');
+    const oldTrainerId = s.trainerId;
+    const oldDate = s.date;
+    const oldTime = s.time;
+    Object.assign(s, {
+      trainerId: i.trainerId,
+      trainerName: trainerName(i.trainerId),
+      date: i.date,
+      time: i.time,
+      status: 'PENDING',
+      declineReason: undefined,
+      cancellationReason: undefined,
+    });
+    offerNext(oldTrainerId, oldDate, oldTime);
+  },
+  memberCancel(id: number, memberId: number): void {
+    const s = session(id);
+    if (s.memberId !== memberId) throw new Error('Not your session.');
+    if (!canMemberEdit(s)) throw new Error('Cannot cancel — less than 48h remain or session not editable.');
+    s.status = 'CANCELLED';
+    s.cancellationReason = 'MEMBER_CANCELLED_IN_TIME';
+    offerNext(s.trainerId, s.date, s.time);
   },
   completeSession(id: number, note?: string): void {
     const s = session(id);

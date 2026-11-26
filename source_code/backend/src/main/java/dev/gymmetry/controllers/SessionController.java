@@ -68,6 +68,39 @@ public class SessionController {
         }
     }
 
+    public record MemberRescheduleRequest(Integer memberId, Integer trainerId,
+                                          String date, String time, String scheduledAt) {}
+
+    @PutMapping("/{id}/member-reschedule")
+    public ResponseEntity<?> memberReschedule(@PathVariable int id,
+                                              @RequestBody MemberRescheduleRequest req) {
+        try {
+            if (req.memberId() == null) throw new IllegalArgumentException("memberId is required");
+            if (req.trainerId() == null) throw new IllegalArgumentException("trainerId is required");
+            LocalDateTime when = req.scheduledAt() != null
+                    ? LocalDateTime.parse(req.scheduledAt())
+                    : parseWhen(req.date(), req.time());
+            gym.memberReschedule(id, req.memberId(), when, req.trainerId());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    public record MemberCancelRequest(Integer memberId) {}
+
+    @PutMapping("/{id}/member-cancel")
+    public ResponseEntity<?> memberCancel(@PathVariable int id,
+                                          @RequestBody MemberCancelRequest req) {
+        try {
+            if (req.memberId() == null) throw new IllegalArgumentException("memberId is required");
+            gym.memberCancel(id, req.memberId());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     // Trainer accepts or declines: { accept, reason } (reason required when declining)
     public record ResponseRequest(Boolean accept, String reason) {}
 

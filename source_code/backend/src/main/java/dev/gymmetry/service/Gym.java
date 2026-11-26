@@ -382,6 +382,12 @@ public class Gym {
         if (newTime == null || newTrainer == null) {
             throw new IllegalArgumentException("New time and trainer required");
         }
+        if (!newTime.isAfter(LocalDateTime.now().plusDays(2))) {
+            throw new IllegalStateException("New time must be at least 48 hours away");
+        }
+        if (!isTrainerActive(newTrainer)) {
+            throw new IllegalStateException("That trainer is not available for booking");
+        }
         if (memberHasConflict(s.getMember(), newTime, s.getId())) {
             throw new IllegalStateException("Member already has a session at that time");
         }
@@ -406,6 +412,15 @@ public class Gym {
         s.memberCancel();
         sessionRepo.update(s);
         offerNextForSlot(slotTrainer.getId(), slotTime);
+    }
+
+    public void memberReschedule(int sessionId, int memberId,
+                                 LocalDateTime newTime, int newTrainerId) {
+        memberReschedule(sessionId, findMember(memberId), newTime, findTrainer(newTrainerId));
+    }
+
+    public void memberCancel(int sessionId, int memberId) {
+        memberCancel(sessionId, findMember(memberId));
     }
 
     /** API flow: an admin reassigns a declined session to another trainer. */

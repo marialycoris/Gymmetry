@@ -99,6 +99,8 @@ public class Session {
         this.scheduledAt = newTime;
         this.trainer = newTrainer;
         this.status = SessionStatus.REQUESTED;
+        this.declineReason = null;
+        this.cancellationReason = null;
         touch();
     }
 

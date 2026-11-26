@@ -16,7 +16,7 @@ By combining centralized record management with engagement insights and more fle
 |---|---|
 | **Gym Admin / Owner** | Manages members, trainers, payments, reports, session reassignment, cancellations, attendance overrides, waitlists, and engagement insights |
 | **Trainer** | Handles session requests, views assigned sessions, marks attendance, and flags member no-shows |
-| **Member** | Manages their membership, books or joins a waitlist for sessions, approves or rejects proposed trainer changes, and monitors attendance |
+| **Member** | Manages their membership, books or joins a waitlist for sessions, reschedules or cancels eligible sessions, approves or rejects proposed trainer changes, and monitors attendance |
 
 ## Objectives
 
@@ -106,6 +106,7 @@ Improve session availability and help members find suitable alternatives when th
 Key capabilities:
 - Allow members to join a waitlist for fully booked sessions (`POST /api/fairslot/waitlist`).
 - Offer the next waitlisted member an in-app slot for 24 hours when a booking is cancelled or a schedule changes. This is an in-app offer only; no email, SMS, or push notification is sent.
+- Let members reschedule or cancel eligible sessions at least 48 hours ahead; the freed slot is offered to the next waitlisted member (`PUT /api/sessions/{id}/member-reschedule`, `PUT /api/sessions/{id}/member-cancel`).
 - Expire unclaimed offers every 15 minutes and pass the slot to the next member.
 - Suggest alternative sessions or trainers when a requested slot is unavailable (`GET /api/fairslot/alternatives`).
 - Maintain a transparent waitlist order based on booking request order (`GET /api/fairslot/waitlist`).
@@ -235,7 +236,7 @@ All routes are under `/api`. The frontend uses these endpoints directly; the `PO
 | Auth | `POST /auth/login`, `POST /auth/change-password` |
 | Members | `GET /members`, `GET /members/{id}`, `POST /members`, `PUT /members/{id}`, `PUT /members/{id}/plan`, `POST /members/{id}/renew`, `PUT /members/{id}/status`, `PUT /members/{id}/password`, `POST /members/{id}/pay` |
 | Trainers | `GET /trainers`, `GET /trainers/{id}`, `POST /trainers`, `PUT /trainers/{id}`, `PUT /trainers/{id}/status`, `PUT /trainers/{id}/password`, `GET /trainers/{id}/slots?date=` |
-| Sessions | `GET /sessions`, `GET /sessions/member/{memberId}`, `GET /sessions/trainer/{trainerId}`, `POST /sessions`, `PUT /sessions/{id}/response`, `PUT /sessions/{id}/reassignment-response`, `PUT /sessions/{id}/complete`, `PUT /sessions/{id}/no-show`, `PUT /sessions/{id}/trainer-absent`, `PUT /sessions/{id}/cancel`, `PUT /sessions/{id}/attendance`, `POST /sessions/{id}/accept`, `POST /sessions/{id}/decline`, `PUT /sessions/{id}/reassign` |
+| Sessions | `GET /sessions`, `GET /sessions/member/{memberId}`, `GET /sessions/trainer/{trainerId}`, `POST /sessions`, `PUT /sessions/{id}/member-reschedule`, `PUT /sessions/{id}/member-cancel`, `PUT /sessions/{id}/response`, `PUT /sessions/{id}/reassignment-response`, `PUT /sessions/{id}/complete`, `PUT /sessions/{id}/no-show`, `PUT /sessions/{id}/trainer-absent`, `PUT /sessions/{id}/cancel`, `PUT /sessions/{id}/attendance`, `POST /sessions/{id}/accept`, `POST /sessions/{id}/decline`, `PUT /sessions/{id}/reassign` |
 | Payments | `GET /payments?memberId=`, `POST /payments` |
 | Reports | `GET /reports/summary` |
 | Pulse | `GET /pulse/members` |
@@ -249,7 +250,6 @@ Session responses include `status`, `declineReason`, `completionNote`, `notHeldR
 - CORS is open to all origins; configure it for production use.
 - FairSlot notifications are in-app only; no email, SMS, or push delivery is implemented.
 - Trainer schedules are not user-editable. Slots are fixed (`06:00`, `08:00`, `10:00`, `16:00`, `18:00`, `20:00`) with specialty-based capacities.
-- Member reschedule and member cancel logic exists in the domain/service layer and legacy console code, but there is no REST route or web UI action for them.
 - A legacy console UI exists under `backend/src/main/java/dev/gymmetry/ui/`, but the delivered entry point starts only the Spring Boot web server.
 - The seeded `admin123` password does not satisfy the normal password policy because it is created through the seed path.
 
