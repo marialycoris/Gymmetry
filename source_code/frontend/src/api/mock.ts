@@ -308,15 +308,50 @@ export const mock = {
       s.status = 'PENDING';
     } else {
       s.status = 'CANCELLED';
+      s.cancellationReason = 'MEMBER_REJECTED_REASSIGNMENT';
       offerNext(s.trainerId, s.date, s.time);
     }
   },
   completeSession(id: number, note?: string): void {
-    const s = session(id); s.status = 'COMPLETED'; s.completionNote = note?.trim() || undefined;
+    const s = session(id);
+    s.status = 'COMPLETED';
+    s.trainerStatus = 'PRESENT';
+    s.notHeldReason = undefined;
+    s.completionNote = note?.trim() || undefined;
     member(s.memberId).lastAttendance = s.date;
   },
+  markNoShow(id: number): void {
+    const s = session(id);
+    if (s.status !== 'ACCEPTED') throw new Error('Only scheduled sessions can be marked as no-show.');
+    s.status = 'NOT_HELD';
+    s.notHeldReason = 'MEMBER_NO_SHOW';
+    s.trainerStatus = 'PRESENT';
+  },
+  markTrainerAbsent(id: number, reason?: string): void {
+    const s = session(id);
+    if (s.status !== 'ACCEPTED') throw new Error('Only scheduled sessions can mark the trainer absent.');
+    s.status = 'CANCELLED';
+    s.cancellationReason = 'TRAINER_ABSENT';
+    s.trainerStatus = 'ABSENT';
+    s.trainerStatusOverridden = true;
+    s.overrideReason = reason?.trim() || undefined;
+    offerNext(s.trainerId, s.date, s.time);
+  },
+  adminCancelSession(id: number): void {
+    const s = session(id);
+    if (s.status === 'COMPLETED' || s.status === 'NOT_HELD' || s.status === 'CANCELLED')
+      throw new Error('Cannot cancel a finished session.');
+    s.status = 'CANCELLED';
+    s.cancellationReason = 'ADMIN_CANCELLED';
+    offerNext(s.trainerId, s.date, s.time);
+  },
   overrideAttendance(id: number, status: 'COMPLETED' | 'NOT_HELD'): void {
-    const s = session(id); s.status = status;
+    const s = session(id);
+    if (s.status !== 'COMPLETED' && s.status !== 'NOT_HELD')
+      throw new Error('Cannot override attendance — session has no outcome yet.');
+    s.status = status;
+    s.trainerStatus = 'PRESENT';
+    s.notHeldReason = status === 'NOT_HELD' ? (s.notHeldReason ?? 'MEMBER_NO_SHOW') : undefined;
     if (status === 'COMPLETED') member(s.memberId).lastAttendance = s.date;
   },
 

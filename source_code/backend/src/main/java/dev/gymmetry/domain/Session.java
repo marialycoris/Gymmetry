@@ -162,11 +162,21 @@ public class Session {
     }
 
     public void adminMarkTrainerAbsent(String reason) {
+        requireStatus(SessionStatus.SCHEDULED, "mark trainer absent");
         this.status = SessionStatus.CANCELLED;
         this.cancellationReason = CancellationReason.TRAINER_ABSENT;
         this.trainerStatus = TrainerSessionStatus.ABSENT;
         this.trainerStatusOverridden = true;
         this.overrideReason = reason;
+        touch();
+    }
+
+    public void adminCancel() {
+        if (status == SessionStatus.COMPLETED || status == SessionStatus.NOT_HELD || status == SessionStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot cancel from " + status);
+        }
+        this.status = SessionStatus.CANCELLED;
+        this.cancellationReason = CancellationReason.ADMIN_CANCELLED;
         touch();
     }
 

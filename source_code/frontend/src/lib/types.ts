@@ -5,6 +5,9 @@ export type SessionStatus = 'PENDING' | 'REASSIGN_PENDING' | 'ACCEPTED' | 'DECLI
 export type PayMethod = 'CASH' | 'CARD' | 'E_WALLET';
 export type PulseLevel = 'FOLLOW_UP' | 'WATCH' | 'POSITIVE';
 export type TrainerStatus = 'ACTIVE' | 'DISABLED';
+export type TrainerAttendanceStatus = 'PENDING' | 'PRESENT' | 'ABSENT';
+export type NotHeldReason = 'MEMBER_NO_SHOW' | 'NOT_MARKED';
+export type CancellationReason = 'MEMBER_CANCELLED_IN_TIME' | 'MEMBER_REJECTED_REASSIGNMENT' | 'ADMIN_CANCELLED' | 'TRAINER_ABSENT';
 export type WaitlistStatus = 'WAITING' | 'OFFERED' | 'BOOKED' | 'CANCELLED' | 'EXPIRED';
 
 export const PLANS: Plan[] = ['BASIC', 'PREMIUM', 'VIP'];
@@ -44,6 +47,8 @@ export interface TrainerRegistrationInput {
 export interface Session {
   id: number; memberId: number; memberName: string; trainerId: number; trainerName: string;
   date: string; time: string; status: SessionStatus; declineReason?: string; completionNote?: string;
+  notHeldReason?: NotHeldReason; cancellationReason?: CancellationReason;
+  trainerStatus?: TrainerAttendanceStatus; trainerStatusOverridden?: boolean; overrideReason?: string;
 }
 export interface Slot { time: string; available: boolean; capacity: number; booked: number; remaining: number }
 export interface WaitlistEntry {

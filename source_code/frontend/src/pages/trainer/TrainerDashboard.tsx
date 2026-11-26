@@ -13,6 +13,7 @@ import { Card } from '../../components/Card';
 import { Input } from '../../components/Input';
 import { Modal } from '../../components/Modal';
 import { Badge } from '../../components/Badge';
+import { pretty } from '../../components/badgeUtils';
 import { Table, td } from '../../components/Table';
 import { BarChart, DonutChart } from '../../components/Charts';
 import { Loading, Notice, Stat } from '../../components/Widgets';
@@ -184,6 +185,15 @@ export function TrainerDashboard() {
   };
   const openDecline = (s: Session) => { setDeclining(s); setReason(''); setReasonErr(''); };
   const openComplete = (s: Session) => { setCompleting(s); setNote(''); };
+  const noShow = async (s: Session) => {
+    const confirmed = await confirm({
+      title: 'Mark member as no-show?',
+      message: `Mark ${s.memberName} as a no-show for ${fmtDate(s.date)} at ${fmtTime(s.time)}?`,
+      confirmLabel: 'Mark no-show',
+    });
+    if (!confirmed) return;
+    await run(() => api.markNoShow(s.id), `no-show-${s.id}`, 'Member marked as no-show.');
+  };
   const confirmComplete = async () => {
     if (!completing) return;
     const confirmed = await confirm({
@@ -239,12 +249,21 @@ export function TrainerDashboard() {
                       <td className={td}><When s={s} /></td>
                       <td className={`${td} font-semibold`}>{s.memberName}</td>
                       <td className={td}>
-                        <Button
-                          size="sm"
-                          disabled={s.date > today() || busyId !== null}
-                          title={s.date > today() ? 'Available on the session day' : undefined}
-                          onClick={() => openComplete(s)}
-                        >Mark completed</Button>
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            disabled={s.date > today() || busyId !== null}
+                            title={s.date > today() ? 'Available on the session day' : undefined}
+                            onClick={() => openComplete(s)}
+                          >Mark completed</Button>
+                          <Button
+                            size="sm"
+                            variant="danger"
+                            disabled={s.date > today() || busyId !== null}
+                            title={s.date > today() ? 'Available on the session day' : undefined}
+                            onClick={() => noShow(s)}
+                          >Mark no-show</Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -266,7 +285,7 @@ export function TrainerDashboard() {
                       <td className={td}><When s={s} /></td>
                       <td className={`${td} font-semibold`}>{s.memberName}</td>
                       <td className={td}><Badge value={s.status} /></td>
-                      <td className={td}>{s.declineReason ?? s.completionNote}</td>
+                      <td className={td}>{s.notHeldReason ? pretty(s.notHeldReason) : s.cancellationReason ? pretty(s.cancellationReason) : s.declineReason ?? s.completionNote}</td>
                     </tr>
                   ))}
                 </Table>

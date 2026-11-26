@@ -103,6 +103,15 @@ export const api = {
   // PUT /sessions/:id/complete  (trainer; also records member attendance; optional note)
   completeSession: (id: number, note?: string) =>
     call(() => mock.completeSession(id, note), () => http<void>(`/sessions/${id}/complete`, send('PUT', { note }))),
+  // PUT /sessions/:id/no-show  (trainer marks the member absent)
+  markNoShow: (id: number) =>
+    call(() => mock.markNoShow(id), () => http<void>(`/sessions/${id}/no-show`, send('PUT'))),
+  // PUT /sessions/:id/trainer-absent  (admin cancels with TRAINER_ABSENT)
+  markTrainerAbsent: (id: number, reason?: string) =>
+    call(() => mock.markTrainerAbsent(id, reason), () => http<void>(`/sessions/${id}/trainer-absent`, send('PUT', { reason }))),
+  // PUT /sessions/:id/cancel  (admin cancels with ADMIN_CANCELLED)
+  adminCancelSession: (id: number) =>
+    call(() => mock.adminCancelSession(id), () => http<void>(`/sessions/${id}/cancel`, send('PUT'))),
   // PUT /sessions/:id/attendance  { status }  (admin override)
   overrideAttendance: (id: number, status: 'COMPLETED' | 'NOT_HELD') =>
     call(() => mock.overrideAttendance(id, status), () => http<void>(`/sessions/${id}/attendance`, send('PUT', { status }))),

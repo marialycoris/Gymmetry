@@ -24,7 +24,9 @@ public class SessionController {
     // Shape expected by the frontend (see frontend/src/lib/types.ts Session)
     public record SessionDto(int id, int memberId, String memberName, int trainerId, String trainerName,
                              String date, String time, String status,
-                             String declineReason, String completionNote) {}
+                             String declineReason, String completionNote,
+                             String notHeldReason, String cancellationReason,
+                             String trainerStatus, boolean trainerStatusOverridden, String overrideReason) {}
 
     // GET /api/sessions?memberId=&trainerId=&status=  (status uses frontend codes)
     @GetMapping
@@ -107,6 +109,39 @@ public class SessionController {
         }
     }
 
+    @PutMapping("/{id}/no-show")
+    public ResponseEntity<?> markNoShow(@PathVariable int id) {
+        try {
+            gym.markNoShow(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    public record TrainerAbsentRequest(String reason) {}
+
+    @PutMapping("/{id}/trainer-absent")
+    public ResponseEntity<?> markTrainerAbsent(@PathVariable int id,
+                                                @RequestBody(required = false) TrainerAbsentRequest req) {
+        try {
+            gym.markTrainerAbsent(id, req == null ? null : req.reason());
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<?> adminCancel(@PathVariable int id) {
+        try {
+            gym.adminCancel(id);
+            return ResponseEntity.noContent().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     public record AttendanceRequest(String status) {}
 
     @PutMapping("/{id}/attendance")
@@ -181,7 +216,16 @@ public class SessionController {
                 at.toLocalTime().format(DateTimeFormatter.ofPattern("HH:mm")),
                 statusCode(s.getStatus()),
                 s.getDeclineReason(),
-                s.getCompletionNote());
+                s.getCompletionNote(),
+                name(s.getNotHeldReason()),
+                name(s.getCancellationReason()),
+                name(s.getTrainerStatus()),
+                s.isTrainerStatusOverridden(),
+                s.getOverrideReason());
+    }
+
+    private static String name(Enum<?> value) {
+        return value == null ? null : value.name();
     }
 
     /** Maps domain statuses to the codes the frontend uses. */

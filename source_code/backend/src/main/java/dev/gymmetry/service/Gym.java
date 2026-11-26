@@ -364,6 +364,12 @@ public class Gym {
         sessionRepo.update(s);
     }
 
+    public void markNoShow(int sessionId) {
+        Session s = findSession(sessionId);
+        s.markMemberNoShow();
+        sessionRepo.update(s);
+    }
+
     public void memberReschedule(int sessionId, Member member,
                                  LocalDateTime newTime, Trainer newTrainer) {
         Session s = findSession(sessionId);
@@ -429,10 +435,23 @@ public class Gym {
     }
 
     public void adminMarkTrainerAbsent(int sessionId, Admin admin, String reason) {
+        markTrainerAbsent(sessionId, reason);
+    }
+
+    public void markTrainerAbsent(int sessionId, String reason) {
         Session s = findSession(sessionId);
         Trainer slotTrainer = s.getTrainer();
         LocalDateTime slotTime = s.getScheduledAt();
         s.adminMarkTrainerAbsent(reason);
+        sessionRepo.update(s);
+        offerNextForSlot(slotTrainer.getId(), slotTime);
+    }
+
+    public void adminCancel(int sessionId) {
+        Session s = findSession(sessionId);
+        Trainer slotTrainer = s.getTrainer();
+        LocalDateTime slotTime = s.getScheduledAt();
+        s.adminCancel();
         sessionRepo.update(s);
         offerNextForSlot(slotTrainer.getId(), slotTime);
     }

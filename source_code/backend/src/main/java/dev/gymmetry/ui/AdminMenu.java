@@ -147,7 +147,7 @@ public class AdminMenu {
             gym.reassignSession(id, newTrainer);
             System.out.println("  ✓ Proposed " + newTrainer.getName() + " — awaiting the member's response.");
         } else {
-            gym.adminMarkTrainerAbsent(id, admin, "Admin approved decline");
+            gym.adminCancel(id);
             System.out.println("  ✓ Session cancelled.");
         }
     }
