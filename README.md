@@ -256,13 +256,13 @@ Session responses include `status`, `declineReason`, `completionNote`, `notHeldR
 ## UML Diagrams
 
 ```
-Use Case Diagram -> https://drive.google.com/file/d/1OvcyyGdVhXLmDtI7FNU1ZwnMG2JZRvRe/view?usp=drive_link
+Use Case Diagram -> https://drive.google.com/file/d/1Ua1Fakil9CyAbZ4adpwhKsZzkMLps-mp/view?usp=sharing
 
-Class Diagram -> https://drive.google.com/file/d/1Bu0xiMndS38IwmjBtsm0O_Cn6HSly6CV/view?usp=drive_link
+Class Diagram -> https://drive.google.com/file/d/1nS6GKZYrXHJm9YsjxgDrlO21SOmDZvnp/view?usp=sharing
 
-Sequence Diagram -> https://drive.google.com/file/d/1ewgt1jRo30dlitkDIEZ5dQHvy3QE-3Y9/view?usp=drive_link
+Sequence Diagram -> https://drive.google.com/file/d/11RlgEv5EUckR2vP_vh6NMQUzx5VnFOej/view?usp=sharing
 
-Activity Diagram -> https://drive.google.com/file/d/1W_8G1LUVu4bOr0dcyuPg8_lI4WfulUnL/view?usp=drive_link
+Activity Diagram -> https://drive.google.com/file/d/1vB3S0MqVjspZ8Que0FYB4DKKe4XmFDUu/view?usp=sharing
 ```
 
 All diagram files are stored in the `UML_diagrams/` directory as well.
